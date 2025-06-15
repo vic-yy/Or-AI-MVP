@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OrçaAI – Analisador de Despesas</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap">
+<style>
+body{font-family:"Inter",sans-serif;background:#f3f4f6}
+.drawer-enter{animation:slide .25s forwards}
+@keyframes slide{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+</style>
+</head>
+<body class="text-gray-800">
+
+<!-- ===================== 1) UPLOAD ===================== -->
+<section id="uploadView" class="min-h-screen flex flex-col items-center justify-center p-8">
+<div class="bg-white w-full max-w-md p-10 rounded-2xl text-center shadow-xl">
+  <h1 class="text-4xl font-extrabold text-blue-600 mb-6">OrçaAI</h1>
+  <p class="text-gray-600 mb-6">
+    Faça upload do seu extrato (<code>.csv</code>) e receba insights.
+    <br>
+    Colunas esperadas: <code>date, description, category, amount</code>
+  </p>
+
+  <input id="csvInput" type="file" accept=".csv"
+         class="mb-4 block mx-auto text-sm file:cursor-pointer file:text-blue-600" />
+
+  <p id="uploadMsg" class="text-sm text-gray-500 mb-6"></p>
+
+  <button id="useDummy" class="text-xs underline text-blue-600 mb-6">
+    usar dados-exemplo
+  </button><br>
+
+  <button id="toDashBtn" disabled
+          class="bg-blue-600 disabled:opacity-40 text-white px-8 py-3 rounded shadow">
+    Ver Dashboard
+  </button>
+</div>
+</section>
+
+
+<!-- ===================== 2) DASHBOARD ================== -->
+<section id="dashView" class="hidden flex flex-col min-h-screen">
+ <header class="bg-white shadow p-4 flex justify-between items-center">
+   <h2 class="text-2xl font-bold">Dashboard OrçaAI</h2>
+   <div class="flex items-center gap-4">
+     <select id="periodSel" class="border rounded px-3 py-1 text-sm"></select>
+     <button id="recBtn"
+             class="bg-emerald-600 text-white px-4 py-2 rounded shadow hover:bg-emerald-700">
+       Recomendações
+     </button>
+   </div>
+ </header>
+
+ <main class="p-6 grow flex flex-col items-center">
+   <!-- KPIs -->
+   <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8 w-full max-w-5xl">
+     <div class="bg-white p-4 rounded shadow text-center">
+       <p class="text-xs text-gray-500">Total</p><p id="tot" class="text-xl font-bold">R$0,00</p>
+     </div>
+     <div class="bg-white p-4 rounded shadow text-center">
+       <p class="text-xs text-gray-500">Maior despesa</p><p id="big" class="text-xl font-bold">R$0,00</p>
+     </div>
+     <div class="bg-white p-4 rounded shadow text-center">
+       <p class="text-xs text-gray-500">Categoria Top</p><p id="top" class="text-xl font-bold">-</p>
+     </div>
+   </div>
+
+   <!-- Charts -->
+   <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 w-full max-w-5xl">
+     <div class="lg:col-span-2 bg-white p-4 rounded shadow">
+       <h3 class="font-semibold mb-2">Por categoria</h3>
+       <canvas id="pie" height="220"></canvas>
+     </div>
+     <div class="lg:col-span-3 bg-white p-4 rounded shadow">
+       <h3 class="font-semibold mb-2">Histórico mensal</h3>
+       <canvas id="line" height="220"></canvas>
+     </div>
+   </div>
+ </main>
+</section>
+
+<!-- ===================== 3) CHAT & LISTA ================ -->
+<div id="chatDrawer"
+    class="fixed top-0 right-0 w-full sm:w-96 h-full bg-white shadow-2xl p-4 flex flex-col hidden drawer-enter">
+ <div class="flex justify-between items-center mb-2">
+   <h4 class="font-bold text-lg" id="chatTitle">Recomendações</h4>
+   <button id="chatClose" class="text-2xl leading-none text-red-600">&times;</button>
+ </div>
+ <div id="chatLog" class="flex-1 overflow-y-auto space-y-2 pr-1"></div>
+ <div class="flex mt-2">
+   <input id="chatInp" class="flex-1 border rounded-l px-3 py-2 text-sm" placeholder="Digite..." />
+   <button id="chatSend" class="bg-blue-600 text-white px-4 rounded-r">Enviar</button>
+ </div>
+</div>
+
+<script>
+const br=v=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const MONTHS=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+let data=[],view=[],pieChart,lineChart;
+
+const uploadView=document.getElementById('uploadView'),
+     dashView  =document.getElementById('dashView');
+
+const csvInput=document.getElementById('csvInput'),
+     uploadMsg=document.getElementById('uploadMsg'),
+     toDashBtn=document.getElementById('toDashBtn'),
+     useDummy =document.getElementById('useDummy');
+
+const periodSel=document.getElementById('periodSel'),
+     totEl=document.getElementById('tot'),
+     bigEl=document.getElementById('big'),
+     topEl=document.getElementById('top'),
+     pieCtx=document.getElementById('pie'),
+     lineCtx=document.getElementById('line');
+
+const recBtn=document.getElementById('recBtn'),
+     drawer=document.getElementById('chatDrawer'),
+     chatTitle=document.getElementById('chatTitle'),
+     chatLog=document.getElementById('chatLog'),
+     chatInp=document.getElementById('chatInp'),
+     chatSend=document.getElementById('chatSend'),
+     chatClose=document.getElementById('chatClose');
+
+/* ---------------- CSV / DUMMY ---------------- */
+useDummy.onclick=()=>{
+data=[{date:'2025-01-08',desc:'Cinema Shopping',           cat:'Lazer',       amt:  67.00},
+  {date:'2025-01-10',desc:'Aluguel',                   cat:'Moradia',     amt:1500.00},
+  {date:'2025-01-12',desc:'Conta de Luz',              cat:'Moradia',     amt: 142.35},
+  {date:'2025-01-18',desc:'Livros Universitários',     cat:'Educação',    amt: 210.40},
+  {date:'2025-01-22',desc:'Posto Shell',               cat:'Transporte',  amt: 210.00},
+  {date:'2025-01-26',desc:'Assinatura Netflix',        cat:'Outros',      amt:  39.90},
+  {date:'2025-01-29',desc:'Farmácia BemEstar',         cat:'Saúde',       amt:  74.20},
+  {date:'2025-02-01',desc:'Supermercado Central',      cat:'Alimentação', amt: 305.60},
+  {date:'2025-02-03',desc:'Restaurante Japonês',       cat:'Alimentação', amt: 120.00},
+  {date:'2025-02-06',desc:'Ônibus Mensal',             cat:'Transporte',  amt:  95.00},
+  {date:'2025-02-09',desc:'Show Arena',                cat:'Lazer',       amt: 250.00},
+  {date:'2025-02-10',desc:'Aluguel',                   cat:'Moradia',     amt:1500.00},
+  {date:'2025-02-14',desc:'Internet Fibra',            cat:'Outros',      amt:  99.90},
+  {date:'2025-02-17',desc:'Faculdade Mensalidade',     cat:'Educação',    amt: 890.00},
+  {date:'2025-02-20',desc:'Posto Shell',               cat:'Transporte',  amt: 185.30},
+  {date:'2025-02-23',desc:'Spotify Premium',           cat:'Outros',      amt:  19.90},
+  {date:'2025-02-25',desc:'Consulta Dentista',         cat:'Saúde',       amt: 250.00},
+  {date:'2025-03-02',desc:'Supermercado Central',      cat:'Alimentação', amt: 328.75},
+  {date:'2025-03-04',desc:'Café Gourmet',              cat:'Alimentação', amt:  22.30},
+  {date:'2025-03-05',desc:'Uber Aeroporto',            cat:'Transporte',  amt:  55.00},
+  {date:'2025-03-08',desc:'Parque de Diversões',       cat:'Lazer',       amt: 132.00},
+  {date:'2025-03-10',desc:'Aluguel',                   cat:'Moradia',     amt:1500.00},
+  {date:'2025-03-12',desc:'Conta de Água',             cat:'Moradia',     amt:  88.40},
+  {date:'2025-03-15',desc:'Curso Online Python',       cat:'Educação',    amt: 149.00},
+  {date:'2025-03-19',desc:'Posto Ipiranga',            cat:'Transporte',  amt: 197.85},
+  {date:'2025-03-24',desc:'Assinatura Disney+',        cat:'Outros',      amt:  33.90},
+  {date:'2025-03-28',desc:'Exames Laboratório',        cat:'Saúde',       amt: 280.00},
+  {date:'2025-04-01',desc:'Supermercado Central',      cat:'Alimentação', amt: 315.10},
+  {date:'2025-04-03',desc:'Padaria Sonhos',            cat:'Alimentação', amt:  28.90},
+  {date:'2025-04-05',desc:'Passagem Ônibus',           cat:'Transporte',  amt:   8.50},
+  {date:'2025-04-07',desc:'Teatro Municipal',          cat:'Lazer',       amt:  95.00},
+  {date:'2025-04-10',desc:'Aluguel',                   cat:'Moradia',     amt:1500.00},
+  {date:'2025-04-13',desc:'Conta de Luz',              cat:'Moradia',     amt: 156.90},
+  {date:'2025-04-16',desc:'Workshop Marketing',        cat:'Educação',    amt: 320.00},
+  {date:'2025-04-20',desc:'Posto BR',                  cat:'Transporte',  amt: 210.75},
+  {date:'2025-04-23',desc:'Apple Music',               cat:'Outros',      amt:  21.90},
+  {date:'2025-04-27',desc:'Vacina Gripe',              cat:'Saúde',       amt:  60.00},
+  {date:'2025-05-02',desc:'Supermercado Central',      cat:'Alimentação', amt: 347.20},
+  {date:'2025-05-04',desc:'Restaurante Italiano',      cat:'Alimentação', amt: 185.00},
+  {date:'2025-05-06',desc:'Assinatura Bike',           cat:'Transporte',  amt:  29.90},
+  {date:'2025-05-08',desc:'Concerto Orquestra',        cat:'Lazer',       amt: 180.00},
+  {date:'2025-05-10',desc:'Aluguel',                   cat:'Moradia',     amt:1500.00},
+  {date:'2025-05-14',desc:'Seguro Residencial',        cat:'Moradia',     amt:  79.99},
+  {date:'2025-05-17',desc:'Curso Fotografia',          cat:'Educação',    amt: 250.00},
+  {date:'2025-05-19',desc:'Posto Shell',               cat:'Transporte',  amt: 198.60},
+  {date:'2025-05-22',desc:'Google Drive',              cat:'Outros',      amt:   9.99},
+  {date:'2025-05-25',desc:'Consulta Psicólogo',        cat:'Saúde',       amt: 220.00},
+  {date:'2025-06-02',desc:'Supermercado Central',      cat:'Alimentação', amt: 299.45},
+  {date:'2025-06-03',desc:'Cafeteria Centro',          cat:'Alimentação', amt:  19.80},
+  {date:'2025-06-05',desc:'Uber Trabalho',             cat:'Transporte',  amt:  40.75},
+  {date:'2025-06-08',desc:'Netflix Cinema',            cat:'Lazer',       amt:  62.00},
+  {date:'2025-06-10',desc:'Aluguel',                   cat:'Moradia',     amt:1500.00},
+  {date:'2025-06-12',desc:'Conta de Água',             cat:'Moradia',     amt:  91.70},
+  {date:'2025-06-15',desc:'Faculdade Mensalidade',     cat:'Educação',    amt: 890.00},
+  {date:'2025-06-18',desc:'Posto Ipiranga',            cat:'Transporte',  amt: 205.10},
+  {date:'2025-06-21',desc:'Assinatura Amazon',         cat:'Outros',      amt:  14.90},
+  {date:'2025-06-25',desc:'Medicamentos',              cat:'Saúde',       amt:  95.00},
+  {date:'2025-07-01',desc:'Supermercado Central',      cat:'Alimentação', amt: 322.60},
+  {date:'2025-07-03',desc:'Padaria Doce Pão',          cat:'Alimentação', amt:  24.70},
+  {date:'2025-07-05',desc:'Metrô Mensal',              cat:'Transporte',  amt: 110.00},
+  {date:'2025-07-08',desc:'Show Rock',                 cat:'Lazer',       amt: 260.00},
+  {date:'2025-07-10',desc:'Aluguel',                   cat:'Moradia',     amt:1550.00},
+  {date:'2025-07-12',desc:'Conta de Luz',              cat:'Moradia',     amt: 162.40},
+  {date:'2025-07-16',desc:'Curso Design',              cat:'Educação',    amt: 340.00},
+  {date:'2025-07-19',desc:'Posto BR',                  cat:'Transporte',  amt: 215.90},
+  {date:'2025-07-22',desc:'Microsoft 365',             cat:'Outros',      amt:  36.00},
+  {date:'2025-07-26',desc:'Exame Vista',               cat:'Saúde',       amt: 180.00},
+  {date:'2025-08-02',desc:'Supermercado Central',      cat:'Alimentação', amt: 338.10},
+  {date:'2025-08-03',desc:'Restaurante Mexicano',      cat:'Alimentação', amt: 142.00},
+  {date:'2025-08-05',desc:'Ônibus Interurbano',        cat:'Transporte',  amt:  48.50},
+  {date:'2025-08-07',desc:'Cinema 3D',                 cat:'Lazer',       amt:  78.00},
+  {date:'2025-08-10',desc:'Aluguel',                   cat:'Moradia',     amt:1550.00},
+  {date:'2025-08-13',desc:'Internet Fibra',            cat:'Outros',      amt: 109.90},
+  {date:'2025-08-16',desc:'Curso Inglês',              cat:'Educação',    amt: 290.00},
+  {date:'2025-08-19',desc:'Posto Shell',               cat:'Transporte',  amt: 208.30},
+  {date:'2025-08-23',desc:'Spotify Premium',           cat:'Outros',      amt:  19.90},
+  {date:'2025-08-26',desc:'Clínica Odonto',            cat:'Saúde',       amt: 260.00},
+  {date:'2025-09-01',desc:'Supermercado Central',      cat:'Alimentação', amt: 345.75},
+  {date:'2025-09-02',desc:'Café Express',              cat:'Alimentação', amt:  18.00},
+  {date:'2025-09-04',desc:'Uber Aeroporto',            cat:'Transporte',  amt:  75.00},
+  {date:'2025-09-07',desc:'Parque Aquático',           cat:'Lazer',       amt: 150.00},
+  {date:'2025-09-10',desc:'Aluguel',                   cat:'Moradia',     amt:1550.00},
+  {date:'2025-09-12',desc:'Conta de Água',             cat:'Moradia',     amt:  97.50},
+  {date:'2025-09-15',desc:'Workshop Data',             cat:'Educação',    amt: 410.00},
+  {date:'2025-09-18',desc:'Posto Ipiranga',            cat:'Transporte',  amt: 212.00},
+  {date:'2025-09-22',desc:'Apple TV',                  cat:'Outros',      amt:  19.90},
+  {date:'2025-09-25',desc:'ClinLab Exames',            cat:'Saúde',       amt: 300.00},
+  {date:'2025-10-02',desc:'Supermercado Central',      cat:'Alimentação', amt: 330.90},
+  {date:'2025-10-03',desc:'Restaurante Vegano',        cat:'Alimentação', amt: 135.00},
+  {date:'2025-10-06',desc:'Bilhete Único',             cat:'Transporte',  amt:  60.00},
+  {date:'2025-10-08',desc:'Show Jazz',                 cat:'Lazer',       amt: 190.00},
+  {date:'2025-10-10',desc:'Aluguel',                   cat:'Moradia',     amt:1550.00},
+  {date:'2025-10-14',desc:'Seguro Casa',               cat:'Moradia',     amt:  82.99},
+  {date:'2025-10-17',desc:'Curso Java',                cat:'Educação',    amt: 370.00},
+  {date:'2025-10-20',desc:'Posto BR',                  cat:'Transporte',  amt: 220.50},
+  {date:'2025-10-23',desc:'Google One',                cat:'Outros',      amt:  12.99},
+  {date:'2025-10-27',desc:'Vacina Viagem',             cat:'Saúde',       amt: 180.00},
+  {date:'2025-11-01',desc:'Supermercado Central',      cat:'Alimentação', amt: 360.40},
+  {date:'2025-11-03',desc:'Cafeteria Centro',          cat:'Alimentação', amt:  21.30},
+  {date:'2025-11-05',desc:'Uber Trabalho',             cat:'Transporte',  amt:  42.60},
+  {date:'2025-11-08',desc:'Teatro Musical',            cat:'Lazer',       amt: 210.00},
+  {date:'2025-11-10',desc:'Aluguel',                   cat:'Moradia',     amt:1550.00},
+  {date:'2025-11-12',desc:'Conta de Luz',              cat:'Moradia',     amt: 170.25},
+  {date:'2025-11-15',desc:'Palestra UX',               cat:'Educação',    amt: 260.00},
+  {date:'2025-11-18',desc:'Posto Shell',               cat:'Transporte',  amt: 225.80},
+  {date:'2025-11-22',desc:'Disney+',                   cat:'Outros',      amt:  33.90},
+  {date:'2025-11-25',desc:'Consulta Gastro',           cat:'Saúde',       amt: 310.00},
+  {date:'2025-12-02',desc:'Supermercado Central',      cat:'Alimentação', amt: 375.20},
+  {date:'2025-12-03',desc:'Restaurante Francês',       cat:'Alimentação', amt: 220.00},
+  {date:'2025-12-06',desc:'Metrô Mensal',              cat:'Transporte',  amt: 115.00},
+  {date:'2025-12-08',desc:'Cinema IMAX',               cat:'Lazer',       amt:  88.00},
+  {date:'2025-12-10',desc:'Aluguel',                   cat:'Moradia',     amt:1550.00},
+  {date:'2025-12-14',desc:'Internet Fibra',            cat:'Outros',      amt: 109.90},
+  {date:'2025-12-17',desc:'Curso React',               cat:'Educação',    amt: 390.00},
+  {date:'2025-12-19',desc:'Posto Ipiranga',            cat:'Transporte',  amt: 230.40},
+  {date:'2025-12-23',desc:'Spotify Premium',           cat:'Outros',      amt:  19.90},
+  {date:'2025-12-27',desc:'Check-up Anual',            cat:'Saúde',       amt: 600.00}];
+uploadMsg.textContent='Dados de demonstração carregados.';toDashBtn.disabled=false;
+};
+/* ---------- LER CSV (robusto) ---------- */
+csvInput.onchange = e => {
+const file = e.target.files[0];
+if (!file) { toDashBtn.disabled = true; return; }
+
+Papa.parse(file,{
+header:true,
+skipEmptyLines:true,
+delimiter:"auto",
+trimHeaders:true,             // <-- remove espaços/TABs do cabeçalho
+transformHeader:h=>h.trim(),  // <-- garante limpeza extra
+transform:v=>v.trim(),
+
+  complete: ({ data: rows }) => {
+    /* função utilitária para pegar qualquer variação do nome do campo */
+    const pick = (obj, ...keys) =>
+      keys.map(k => obj[k]).find(v => v !== undefined);
+
+    data = rows.map(r => {
+      /* quantidade: transforma "1.234,56" -> "1234.56" */
+      const rawAmt = (pick(r, 'amount', 'Amount', 'valor', 'Valor') || '')
+                       .replace(/\./g, '')  // tira separador de milhar
+                       .replace(',', '.');  // vírgula -> ponto
+
+      return {
+        date: (pick(r, 'date', 'Date', 'data', 'Data') || '').split(' ')[0],
+        desc:  pick(r, 'description', 'Description', 'descricao', 'Descrição') || '',
+        cat:   pick(r, 'category', 'Category', 'categoria', 'Categoria') || '',
+        amt:   parseFloat(rawAmt)
+      };
+    })
+    .filter(r => r.date && r.cat && !isNaN(r.amt));
+
+    if (!data.length) {
+      uploadMsg.textContent =
+        'Nenhuma linha válida. Verifique se as colunas são date, description, category, amount.';
+      toDashBtn.disabled = true;
+    } else {
+      uploadMsg.textContent = `${data.length} lançamentos carregados.`;
+      toDashBtn.disabled = false;
+    }
+  },
+
+  error: () => {
+    uploadMsg.textContent = 'Erro ao ler o CSV.';
+    toDashBtn.disabled = true;
+  }
+});
+};
+
+/* ----------- Entrar no dashboard ------------ */
+toDashBtn.onclick=()=>{
+uploadView.classList.add('hidden');dashView.classList.remove('hidden');
+fillSelect(); refreshDash();
+};
+
+/* ----------- select de períodos ------------- */
+function fillSelect(){
+periodSel.innerHTML='';periodSel.add(new Option('Todos','all'));
+periodSel.add(new Option('Últimos 3 meses','last3'));
+[...new Set(data.map(r=>r.date.slice(0,7)))].sort()
+ .forEach(m=>{const [y,mo]=m.split('-');periodSel.add(new Option(`${MONTHS[+mo-1]}/${y}`,m));});
+periodSel.value='all';
+}
+periodSel.onchange=refreshDash;
+
+/* ------------- Atualiza KPI + charts -------- */
+function refreshDash(){
+const v=periodSel.value;
+if(v==='all') view=data;
+else if(v==='last3'){const lim=new Date();lim.setMonth(lim.getMonth()-2);
+                     view=data.filter(r=>new Date(r.date)>=lim);}
+else view=data.filter(r=>r.date.startsWith(v));
+
+if(!view.length){totEl.textContent=bigEl.textContent='R$0,00';topEl.textContent='-';drawPie({});drawLine();return;}
+
+const total=view.reduce((s,r)=>s+r.amt,0);
+const maior=Math.max(...view.map(r=>r.amt));
+const catSum={};view.forEach(r=>catSum[r.cat]=(catSum[r.cat]||0)+r.amt);
+const topCat=Object.entries(catSum).sort((a,b)=>b[1]-a[1])[0][0];
+
+totEl.textContent=br(total);bigEl.textContent=br(maior);topEl.textContent=topCat;
+drawPie(catSum);drawLine();
+}
+
+/* ------------- Pie (click abre lista) ------- */
+function drawPie(catSum){
+if(pieChart)pieChart.destroy();
+const labels=Object.keys(catSum), dataPts=Object.values(catSum),
+      colors=['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6','#06b6d4','#a855f7','#f97316'];
+pieChart=new Chart(pieCtx,{type:'doughnut',
+  data:{labels,datasets:[{data:dataPts,backgroundColor:colors.slice(0,labels.length)}]},
+  options:{plugins:{legend:{position:'bottom'}},
+    onClick:(e,els)=>{if(!els.length)return;
+      const cat=labels[els[0].index];
+      const list=view.filter(r=>r.cat===cat).sort((a,b)=>b.amt-a.amt); // ORDEM MAIOR→MENOR
+      openChat(cat,list);}
+}});
+}
+
+/* ---------- Line (histórico + previsão) ---------- */
+function drawLine(){
+if(lineChart) lineChart.destroy();
+
+/* --- 1.﻿ descobrir intervalo que será exibido --- */
+const now   = new Date();
+const sel   = periodSel.value;
+let monthsLabels = [];
+
+if (sel === 'all') {
+  // Janeiro a Dezembro do ano do primeiro lançamento
+  const year = data[0].date.slice(0,4);
+  monthsLabels = Array.from({length:12},(_,i)=>`${year}-${String(i+1).padStart(2,'0')}`);
+} else if (sel === 'last3') {
+  // mês atual e 2 anteriores
+  for (let i=2;i>=0;i--) {
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    monthsLabels.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  }
+} else {
+  // filtro mensal YYYY-MM
+  monthsLabels = [sel];
+}
+
+/* --- 2.﻿ somar gastos por mês dentro de view[] --- */
+const sums = monthsLabels.map(m=>{
+   return view.filter(r=>r.date.startsWith(m))
+              .reduce((s,r)=>s+r.amt,0);
+});
+
+/* --- 3.﻿ criar pontos de previsão (3 meses) ------- */
+const lastVal   = sums[sums.length-1] || 0;
+const forecast  = [];
+const futLabels = [];
+let baseDate    = new Date(monthsLabels[monthsLabels.length-1]+'-01');
+
+for (let i=1;i<=3;i++){
+  baseDate.setMonth(baseDate.getMonth()+1);
+  futLabels.push(`M+${i}`);
+  forecast.push(parseFloat((lastVal * Math.pow(1.05,i)).toFixed(2))); // +5 % ao mês
+}
+
+/* --- 4.﻿ concatenar históricos + “s” + previsão */
+const histData = [...sums, ...Array(forecast.length).fill(null)];
+const prevData = [...Array(sums.length).fill(null), ...forecast];
+
+const ctx=lineCtx;
+lineChart = new Chart(ctx,{
+   type:'line',
+   data:{
+     labels:[...monthsLabels.map(m=>MONTHS[+m.slice(5)-1]), ...futLabels],
+     datasets:[
+       {label:'Histórico',data:histData,borderColor:'#3b82f6',
+        backgroundColor:'rgba(59,130,246,.15)',fill:true,tension:.3},
+       {label:'Previsão',data:prevData,borderColor:'#10b981',
+        borderDash:[6,4],fill:false,tension:.3}
+     ]
+   },
+   options:{
+     plugins:{legend:{position:'top'}},
+     scales:{y:{beginAtZero:false,ticks:{
+       callback:v=>'R$'+v.toLocaleString('pt-BR')}}}
+   }
+});
+}
+
+/* ------------- CHAT / LISTA ----------------- */
+function addMsg(txt,cls){
+const d=document.createElement('div');
+d.className=`p-2 rounded ${cls==='user'?'bg-blue-600 text-white self-end':'bg-gray-200 self-start'}`;
+d.textContent=txt;chatLog.append(d);chatLog.scrollTop=chatLog.scrollHeight;
+}
+function bot(t){addMsg(t,'bot');}
+
+function openChat(cat,list){
+drawer.classList.remove('hidden');
+chatLog.innerHTML='';
+chatTitle.textContent=cat ? `Gastos: ${cat}` : 'Recomendações';
+if(cat){
+  list.forEach(r=>addMsg(`${r.desc} • ${br(r.amt)}`,'bot'));
+  bot(`Total em ${cat}: ${br(list.reduce((s,r)=>s+r.amt,0))}`);
+}else{
+  bot('Olá! Posso ajudar com recomendações.');
+}
+}
+chatClose.onclick=()=>drawer.classList.add('hidden');
+recBtn.onclick =()=>openChat();
+chatSend.onclick=()=>{
+const q=chatInp.value.trim();if(!q)return;
+addMsg(q,'user');chatInp.value='';
+setTimeout(()=>bot('Em breve terei recomendações avançadas 😉'),500);
+};
+chatInp.addEventListener('keypress',e=>e.key==='Enter'&&chatSend.click());
+
+/* --- auto-load dummy para teste: remova se não quiser --- */
+useDummy.click();
+</script>
+</body>
+</html>

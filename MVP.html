@@ -64,58 +64,71 @@ body{font-family:"Inter",sans-serif;background:#f3f4f6}
 </section>
 
 <!-- ===================== 2) DASHBOARD ================== -->
-<section id="dashView" class="hidden flex flex-col min-h-screen">
-<header class="bg-white shadow p-4 flex justify-between items-center">
- <h2 class="text-2xl font-bold">Dashboard OrçaAI</h2>
+<section id="dashView" class="hidden flex flex-col min-h-screen" style="background: linear-gradient(135deg, #F0FFF4 0%, #F9FAFB 100%);">
+  
+  <!-- Cabeçalho -->
+  <header class="bg-white shadow p-4 flex justify-between items-center">
+    <!-- Logo + título -->
+    <div class="flex items-center gap-3">
+      <img src="logo.png" alt="OrçaAI" class="w-12">
+      <h2 class="text-2xl font-bold text-[#34A853]">Dashboard</h2>
+    </div>
 
- <div class="flex gap-4 items-center">
-   <select id="periodSel" class="border rounded px-3 py-1 text-sm"></select>
+    <div class="flex gap-3 items-center">
+      <select id="periodSel" class="border rounded px-3 py-1 text-sm"></select>
 
-   <button id="prevBtn"
-           class="bg-amber-500 text-white px-4 py-2 rounded shadow hover:bg-amber-600">
-     Previsão
-   </button>
+      <button id="prevBtn"
+        class="bg-[#F4B400] hover:bg-yellow-500 text-white px-4 py-2 rounded shadow font-semibold transition">
+        Previsão
+      </button>
 
-   <button id="recBtn"
-           class="bg-emerald-600 text-white px-4 py-2 rounded shadow hover:bg-emerald-700">
-     Recomendações
-   </button>
- </div>
-</header>
+      <button id="recBtn"
+        class="bg-[#34A853] hover:bg-green-700 text-white px-4 py-2 rounded shadow font-semibold transition">
+        Recomendações
+      </button>
+    </div>
+  </header>
 
-<main class="p-6 grow flex flex-col items-center">
- <!-- KPIs -->
- <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8 w-full max-w-5xl">
-   <div class="bg-white p-4 rounded shadow text-center">
-     <p class="text-xs text-gray-500">Total</p><p id="tot" class="text-xl font-bold">R$0,00</p>
-   </div>
-   <div class="bg-white p-4 rounded shadow text-center">
-     <p class="text-xs text-gray-500">Maior despesa</p><p id="big" class="text-xl font-bold">R$0,00</p>
-   </div>
-   <div class="bg-white p-4 rounded shadow text-center">
-     <p class="text-xs text-gray-500">Categoria Top</p><p id="top" class="text-xl font-bold">-</p>
-   </div>
- </div>
+  <!-- Conteúdo principal -->
+  <main class="p-8 grow flex flex-col items-center">
 
- <!-- Charts -->
- <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 w-full max-w-5xl">
-   <div class="lg:col-span-2 bg-white p-4 rounded shadow">
-     <h3 class="font-semibold mb-2">Por categoria</h3>
-     <canvas id="pie" height="220"></canvas>
-   </div>
-   <div class="lg:col-span-3 bg-white p-4 rounded shadow">
-     <h3 class="font-semibold mb-2">Histórico mensal</h3>
-     <canvas id="line" height="220"></canvas>
-   </div>
- </div>
+    <!-- KPIs -->
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-6 mb-10 w-full max-w-5xl">
+      <div class="bg-white p-5 rounded-3xl shadow text-center">
+        <p class="text-sm text-gray-500 mb-1">Total</p>
+        <p id="tot" class="text-3xl font-bold text-[#34A853]">R$0,00</p>
+      </div>
+      <div class="bg-white p-5 rounded-3xl shadow text-center">
+        <p class="text-sm text-gray-500 mb-1">Maior despesa</p>
+        <p id="big" class="text-3xl font-bold text-[#EA4335]">R$0,00</p>
+      </div>
+      <div class="bg-white p-5 rounded-3xl shadow text-center">
+        <p class="text-sm text-gray-500 mb-1">Categoria Top</p>
+        <p id="top" class="text-3xl font-bold text-[#F4B400]">-</p>
+      </div>
+    </div>
 
- <!-- Previsão (inicia oculta) -->
- <div id="forecastBox" class="bg-white p-6 rounded shadow w-full max-w-3xl mt-8 hidden">
-   <h3 class="font-semibold mb-4 text-center">Previsão – Próximo mês</h3>
-   <canvas id="forecastChart" height="200"></canvas>
- </div>
-</main>
+    <!-- Gráficos -->
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-8 w-full max-w-5xl">
+      <div class="lg:col-span-2 bg-white p-5 rounded-3xl shadow">
+        <h3 class="font-semibold mb-3 text-gray-700">Por categoria</h3>
+        <canvas id="pie" height="220"></canvas>
+      </div>
+      <div class="lg:col-span-3 bg-white p-5 rounded-3xl shadow">
+        <h3 class="font-semibold mb-3 text-gray-700">Histórico mensal</h3>
+        <canvas id="line" height="220"></canvas>
+      </div>
+    </div>
+
+    <!-- Previsão (inicia oculta) -->
+    <div id="forecastBox" class="bg-white p-6 rounded-3xl shadow w-full max-w-3xl mt-10 hidden">
+      <h3 class="font-semibold mb-4 text-center text-gray-700">Previsão – Próximo mês</h3>
+      <canvas id="forecastChart" height="200"></canvas>
+    </div>
+
+  </main>
 </section>
+
 
 <!-- ===================== 3) CHAT & LISTA ================ -->
 <div id="chatDrawer"

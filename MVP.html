@@ -17,28 +17,50 @@ body{font-family:"Inter",sans-serif;background:#f3f4f6}
 <body class="text-gray-800">
 
 <!-- ===================== 1) UPLOAD ===================== -->
-<section id="uploadView" class="min-h-screen flex flex-col items-center justify-center p-8">
-<div class="bg-white w-full max-w-md p-10 rounded-2xl text-center shadow-xl">
-  <h1 class="text-4xl font-extrabold text-blue-600 mb-6">OrçaAI</h1>
-  <p class="text-gray-600 mb-6">
-    Faça upload do seu extrato (<code>.csv</code>) e receba insights.<br>
-    Colunas esperadas: <code>date, description, category, amount</code>
-  </p>
+<section id="uploadView" class="min-h-screen flex flex-col items-center justify-center p-6" style="background: linear-gradient(135deg, #34A853 0%, #0F9D58 100%);">
+  <div class="bg-white w-full max-w-lg p-6 rounded-3xl text-center shadow-2xl transition-all">
 
-  <input id="csvInput" type="file" accept=".csv"
-         class="mb-4 block mx-auto text-sm file:cursor-pointer file:text-blue-600" />
+    <!-- Logo -->
+    <img src="logo.png" alt="Logo OrçaAI" class="w-36 mx-auto mb-4">
 
-  <p id="uploadMsg" class="text-sm text-gray-500 mb-6"></p>
+    <!-- Slogan -->
+    <h1 class="text-2xl font-extrabold text-[#34A853] mb-2 leading-snug">O seu assistente financeiro inteligente</h1>
 
-  <button id="useDummy" class="text-xs underline text-blue-600 mb-6">
-    usar dados-exemplo
-  </button><br>
+    <!-- Subtexto -->
+    <p class="text-base text-gray-700 font-medium mb-4 leading-snug">
+      Planeje melhor. Gaste com inteligência.<br> Deixe o OrçaAI analisar suas despesas e mostrar onde você pode otimizar seus gastos.
+    </p>
 
-  <button id="toDashBtn" disabled
-          class="bg-blue-600 disabled:opacity-40 text-white px-8 py-3 rounded shadow">
-    Ver Dashboard
-  </button>
-</div>
+    <!-- Dropzone -->
+    <label for="csvInput" class="flex flex-col items-center justify-center w-full h-32 bg-[#E8F5E9] rounded-lg border-2 border-dashed border-[#34A853] cursor-pointer hover:bg-green-100 transition mb-4">
+      <svg class="w-8 h-8 text-[#34A853] mb-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+      </svg>
+      <p class="text-sm text-[#34A853] font-medium">Clique ou arraste seu arquivo CSV aqui</p>
+    </label>
+    <input id="csvInput" type="file" accept=".csv" class="hidden" />
+
+    <p id="uploadMsg" class="text-sm text-center text-gray-500 mb-3"></p>
+
+    <div class="text-center text-sm text-gray-500 mb-2">
+      — ou experimente agora mesmo —
+    </div>
+
+    <!-- Botão de dados de exemplo -->
+    <div class="flex justify-center mb-4">
+      <button id="useDummy" class="bg-[#F4B400] hover:bg-yellow-500 text-white px-6 py-3 rounded-full shadow-lg font-semibold text-base transition">
+        Testar com dados de exemplo
+      </button>
+    </div>
+
+    <!-- Botão de dashboard -->
+    <div class="flex justify-center">
+      <button id="toDashBtn" disabled class="bg-[#34A853] hover:bg-green-700 text-white px-8 py-3 rounded-full text-base font-semibold shadow-lg transition disabled:opacity-40">
+        Ver Dashboard
+      </button>
+    </div>
+
+  </div>
 </section>
 
 <!-- ===================== 2) DASHBOARD ================== -->

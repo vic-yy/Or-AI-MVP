@@ -70,22 +70,32 @@ body{font-family:"Inter",sans-serif;background:#f3f4f6}
   <header class="bg-white shadow p-4 flex justify-between items-center">
     <!-- Logo + título -->
     <div class="flex items-center gap-3">
-      <img src="logo.png" alt="OrçaAI" class="w-12">
+      <img src="logo.png" alt="OrçaAI" class="w-16">
       <h2 class="text-2xl font-bold text-[#34A853]">Dashboard</h2>
     </div>
 
-    <div class="flex gap-3 items-center">
-      <select id="periodSel" class="border rounded px-3 py-1 text-sm"></select>
+    <div class="flex gap-4 items-center">
 
-      <button id="prevBtn"
-        class="bg-[#F4B400] hover:bg-yellow-500 text-white px-4 py-2 rounded shadow font-semibold transition">
-        Previsão
+      <!-- Período -->
+      <div class="flex items-center gap-2">
+        <span class="text-sm font-medium text-[#34A853]">Período:</span>
+        <select id="periodSel" class="border rounded px-3 py-1 text-sm">
+          <option value="all" selected>Todos</option>
+          <option value="last3">Últimos 3 meses</option>
+          <!-- Os demais meses serão adicionados dinamicamente -->
+        </select>
+      </div>
+
+      <!-- Previsão -->
+      <button id="prevBtn" class="bg-[#F4B400] hover:bg-yellow-500 text-white px-4 py-2 rounded shadow font-semibold transition">
+        Ver Previsão
       </button>
 
-      <button id="recBtn"
-        class="bg-[#34A853] hover:bg-green-700 text-white px-4 py-2 rounded shadow font-semibold transition">
-        Recomendações
+      <!-- Insights -->
+      <button id="recBtn" class="bg-[#34A853] hover:bg-green-700 text-white px-4 py-2 rounded shadow font-semibold transition">
+        Insights
       </button>
+
     </div>
   </header>
 
@@ -132,17 +142,34 @@ body{font-family:"Inter",sans-serif;background:#f3f4f6}
 
 <!-- ===================== 3) CHAT & LISTA ================ -->
 <div id="chatDrawer"
-    class="fixed top-0 right-0 w-full sm:w-96 h-full bg-white shadow-2xl p-4 flex flex-col hidden drawer-enter">
-<div class="flex justify-between items-center mb-2">
-  <h4 class="font-bold text-lg" id="chatTitle">Recomendações</h4>
-  <button id="chatClose" class="text-2xl leading-none text-red-600">&times;</button>
+  class="fixed top-0 right-0 w-full sm:w-96 h-full bg-white shadow-2xl flex flex-col z-50 hidden transition-all">
+
+  <!-- Header -->
+  <div class="flex justify-between items-center p-4 border-b">
+    <div class="flex items-center gap-3">
+      <div class="bg-[#34A853] text-white rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl">AI</div>
+      <h4 class="font-bold text-lg text-gray-800" id="chatTitle">Insights</h4>
+    </div>
+    <button id="chatClose" class="text-3xl leading-none text-gray-500 hover:text-red-500">&times;</button>
+  </div>
+
+  <!-- Área de mensagens -->
+  <div id="chatLog" class="flex-1 overflow-y-auto space-y-3 p-4 bg-[#F9FAFB] rounded-b-xl">
+    <!-- As mensagens serão adicionadas dinamicamente -->
+  </div>
+
+  <!-- Input -->
+  <div class="flex items-center p-3 border-t bg-white">
+    <input id="chatInp" class="flex-1 border rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-[#34A853] focus:outline-none"
+      placeholder="Digite sua mensagem..." />
+    <button id="chatSend"
+      class="ml-3 bg-[#34A853] hover:bg-green-700 text-white px-5 py-2 rounded-full font-semibold transition">
+      Enviar
+    </button>
+  </div>
+
 </div>
-<div id="chatLog" class="flex-1 overflow-y-auto space-y-2 pr-1"></div>
-<div class="flex mt-2">
-  <input id="chatInp" class="flex-1 border rounded-l px-3 py-2 text-sm" placeholder="Digite...">
-  <button id="chatSend" class="bg-blue-600 text-white px-4 rounded-r">Enviar</button>
-</div>
-</div>
+
 
 <script>
 /* ---------- utilidades básicos ---------- */
@@ -192,13 +219,13 @@ function bot(txt){ addMsg(txt,'bot'); }
 function openChat(cat,list){
  drawer.classList.remove('hidden');
  chatLog.innerHTML='';
- chatTitle.textContent=cat?`Gastos: ${cat}`:'Recomendações';
+ chatTitle.textContent=cat?`Gastos: ${cat}`:'Insights';
 
  if(cat && list){
     list.forEach(r=>addMsg(`${r.desc} • ${br(r.amt)}`,'bot'));
     bot(`Total em ${cat}: ${br(list.reduce((s,r)=>s+r.amt,0))}`);
  }else{
-    bot('Olá! Posso ajudar com recomendações.');
+    bot('Olá! Posso ajudar com Insights.');
  }
 }
 chatClose.addEventListener('click',()=>drawer.classList.add('hidden'));

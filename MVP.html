@@ -538,87 +538,249 @@ pieChart=new Chart(pieCtx,{type:'doughnut',
 });
 }
 
-/* ---------- Line chart + previsão total ------- */
+/* =========================================================
+ BLOCO ‑ NOVA ROTINA DE PREVISÃO + GRÁFICOS
+ ========================================================= */
+
+/* ---------- helpers numéricos --------------------------- */
+const mean          = arr => arr.length ? arr.reduce((s,v)=>s+v,0)/arr.length : 0;
+const weightedAvg   = (arr,w) => {
+if(!arr.length) return 0;
+const ww = w.slice(-arr.length);
+return arr.reduce((s,v,i)=>s+v*ww[i],0)/ww.reduce((a,b)=>a+b);
+};
+const quantile      = (arr,q)=>{
+if(!arr.length) return 0;
+const s=[...arr].sort((a,b)=>a-b);
+const pos = (s.length-1)*q;
+const base = Math.floor(pos);
+const rest = pos-base;
+return s[base] + (s[base+1]-s[base] || 0)*rest;
+};
+const removeOutliers = arr=>{
+if(arr.length<4) return arr;
+const q1 = quantile(arr,.25), q3=quantile(arr,.75), iqr=q3-q1;
+return arr.filter(x=>x>=q1-1.5*iqr && x<=q3+1.5*iqr);
+};
+
+/* ---------- modelos simples ----------------------------- */
+function ses(series,alpha=.4){       // Suavização exponencial simples
+let s = series[0] ?? 0;
+for(let i=1;i<series.length;i++) s = alpha*series[i] + (1-alpha)*s;
+return s;
+}
+const MODELS = {
+fixed : series => series.at(-1) ?? 0,
+avg3  : series => mean(series.slice(-3)),
+wavg3 : series => weightedAvg(series.slice(-3),[3,2,1]),
+ses   : series => ses(series)
+};
+function chooseModel(cat){
+if(/aluguel|condom|iptu|mensalidade|assinatura|seguro/i.test(cat)) return 'fixed';
+if(/supermercado/i.test(cat))                                     return 'wavg3';
+return 'ses';
+}
+
+/* ---------- agregadores --------------------------------- */
+function buildMonthlyMap(records){           // p/ fator sazonal
+const map={};
+records.forEach(r=>{
+  const m=new Date(r.date).getMonth();     // 0-11
+  (map[r.cat]=map[r.cat]||Array(12).fill(0))[m]+=r.amt;
+});
+return map;
+}
+function getCatMonthlyTotals(records){       // série cronológica
+const tmp={};
+records.forEach(r=>{
+  const ym=r.date.slice(0,7);
+  (tmp[r.cat]=tmp[r.cat]||{})[ym]=(tmp[r.cat][ym]||0)+r.amt;
+});
+const out={};
+Object.keys(tmp).forEach(cat=>{
+  const months=Object.keys(tmp[cat]).sort();
+  out[cat]=months.map(m=>tmp[cat][m]);
+});
+return out;
+}
+function seasonalFactor(cat,targetMonth,map){   // 0-11
+const arr=map[cat]||[];
+const overall=mean(arr);
+if(!overall) return 1;
+return (arr[targetMonth]||overall)/overall;
+}
+
+/* ---------- previsão por categoria ---------------------- */
+function forecastByCat(baseData,refYm){
+const seriesMap   = getCatMonthlyTotals(baseData);
+const monthlyMap  = buildMonthlyMap(baseData);
+const targetMonth = +refYm.slice(5)-1;          // 0-11
+const out={};
+for(const [cat,series] of Object.entries(seriesMap)){
+  const clean   = removeOutliers(series);
+  const mdlName = chooseModel(cat);
+  const rawVal  = MODELS[mdlName](clean);
+  const factor  = seasonalFactor(cat,targetMonth,monthlyMap);
+  out[cat]      = +(rawVal*factor).toFixed(2);
+}
+return out;
+}
+
+/* ---------- cria lançamentos sintéticos ----------------- */
+function makeForecastData(byCat, refYm){
+return Object.entries(byCat).map(([cat,amt])=>({
+  date: refYm+'-10',        // dia fictício
+  desc: '[Previsão]',
+  cat,
+  amt
+}));
+}
+
+/* ---------- getNextMonthObject -------------------------- */
+/* suporta deslocamento: 0 = mês seguinte, 1 = +2 meses ... */
+function getNextMonthObject(offset = 0){
+const baseDate = data.length
+      ? new Date(Math.max(...data.map(r => new Date(r.date))))
+      : new Date();                                     // sem dados → hoje
+
+const nm  = new Date(baseDate.getFullYear(),
+                     baseDate.getMonth() + 1 + offset, 1);
+
+const ref = `${nm.getFullYear()}-${String(nm.getMonth()+1).padStart(2,'0')}`;
+return { refYm: ref, label: `${MONTHS[nm.getMonth()]}/${nm.getFullYear()}` };
+}
+
+/* ---------- gera N meses à frente ----------------------- */
+function rollForecast(baseData,months=3){
+let cur=[...baseData];
+const out=[];
+for(let k=0;k<months;k++){
+  const next = getNextMonthObject(k);     // usa função já existente
+  const byCat= forecastByCat(cur,next.refYm);
+  out.push({...next,byCat});
+  cur = [...cur, ...makeForecastData(byCat,next.refYm)];
+}
+return out;
+}
+
+/* =========================================================
+ GRÁFICOS
+ ========================================================= */
+
+/* ---------- Line chart + previsão total ----------------- */
 function drawLine(){
-if(lineChart)lineChart.destroy();
+if(lineChart) lineChart.destroy();
+
+/* 1. histórico -------------------------------------------------- */
 const sel=periodSel.value,now=new Date();let histLabels=[];
-if(sel==='all'){const y=data[0]?.date.slice(0,4)||now.getFullYear();
-                histLabels=Array.from({length:12},(_,i)=>`${y}-${String(i+1).padStart(2,'0')}`);}
-else if(sel==='last3'){for(let i=2;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);
-                  histLabels.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);}}
-else histLabels=[sel];
+if(sel==='all'){
+  const y=data[0]?.date.slice(0,4)||now.getFullYear();
+  histLabels=Array.from({length:12},(_,i)=>`${y}-${String(i+1).padStart(2,'0')}`);
+}else if(sel==='last3'){
+  for(let i=2;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    histLabels.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  }
+}else histLabels=[sel];
 
-const histVals=histLabels.map(m=>view.filter(r=>r.date.startsWith(m))
-                                     .reduce((s,r)=>s+r.amt,0));
-const next=getNextMonthObject();
-const forecastTotal=Object.values(calcForecastPerCategory(data,next.refYm)).reduce((s,v)=>s+v,0);
+const histVals=histLabels.map(m=>
+  view.filter(r=>r.date.startsWith(m)).reduce((s,r)=>s+r.amt,0));
 
-const labs=[...histLabels.map(m=>`${MONTHS[+m.slice(5)-1]}/${m.slice(0,4)}`),next.label];
-const histData=[...histVals,null];
-const projData=[...Array(histVals.length).fill(null),forecastTotal];
+/* 2. previsão (3 meses) ---------------------------------------- */
+const forecasts = rollForecast(data,3);                 // << NOVO
+const forecastTotals = forecasts.map(f=>Object.values(f.byCat)
+                                      .reduce((s,v)=>s+v,0));
 
-lineChart=new Chart(lineCtx,{type:'line',
+/* 3. monta e exibe --------------------------------------------- */
+const labs = [...histLabels.map(m=>`${MONTHS[+m.slice(5)-1]}/${m.slice(0,4)}`),
+              ...forecasts.map(f=>f.label)];
+const histData = [...histVals, ...Array(3).fill(null)];
+// cria vetores do mesmo tamanho da label-axis, todos nulos
+const projData1 = Array(labs.length).fill(null);
+const projData2 = Array(labs.length).fill(null);
+const projData3 = Array(labs.length).fill(null);
+
+// injeta os valores previstos no ponto correto
+projData1[histVals.length]   = forecastTotals[0];
+projData2[histVals.length+1] = forecastTotals[1];
+projData3[histVals.length+2] = forecastTotals[2];
+
+lineChart = new Chart(lineCtx,{
+  type:'line',
   data:{labels:labs,
     datasets:[
       {label:'Histórico',data:histData,borderColor:'#3b82f6',
        backgroundColor:'rgba(59,130,246,.15)',fill:true,tension:.3},
-      {label:'Projeção total (próx. mês)',data:projData,borderColor:'#10b981',
-       borderDash:[6,4],pointStyle:'rect',fill:false,tension:.3}
+      {label:`Projeção total (${forecasts[0].label})`,data:projData1,
+       borderColor:'#10b981',borderDash:[6,4],pointStyle:'rect',fill:false,tension:.3},
+      {label:`Projeção total (${forecasts[1].label})`,data:projData2,
+       borderColor:'#f59e0b',borderDash:[6,4],pointStyle:'rect',fill:false,tension:.3},
+      {label:`Projeção total (${forecasts[2].label})`,data:projData3,
+       borderColor:'#ea4335',borderDash:[6,4],pointStyle:'rect',fill:false,tension:.3}
     ]},
   options:{plugins:{legend:{position:'top'}},
            scales:{y:{ticks:{callback:v=>'R$'+v.toLocaleString('pt-BR')}}}}
 });
 }
 
-/* ---------- painel previsão detalhada --------- */
-prevBtn.onclick=()=>{
- if(forecastBox.classList.contains('hidden')){drawForecast();forecastBox.classList.remove('hidden');
-     prevBtn.classList.add('ring','ring-amber-300');}
- else{forecastBox.classList.add('hidden');prevBtn.classList.remove('ring','ring-amber-300');}
-};
+/* ---------- painel previsão detalhada ------------------- */
 function drawForecast(){
-if(forecastChart)forecastChart.destroy();
-const next=getNextMonthObject();
-const byCat=calcForecastPerCategory(data,next.refYm);
-forecastChart=new Chart(forecastCtx,{type:'bar',
-  data:{labels:Object.keys(byCat),
-        datasets:[{label:`Previsto para ${next.label}`,data:Object.values(byCat),
-                   backgroundColor:'#f59e0b'}]},
-  options:{plugins:{legend:{display:false}},
-           scales:{y:{beginAtZero:true,ticks:{callback:v=>'R$'+v.toLocaleString('pt-BR')}}}}
-});
-}
+if(forecastChart) forecastChart.destroy();
 
-/* ---------- getNextMonthObject ---------------- */
-function getNextMonthObject(){
-const last=new Date(Math.max(...data.map(r=>new Date(r.date))));
-const nm=new Date(last.getFullYear(),last.getMonth()+1,1);
-const ref=`${nm.getFullYear()}-${String(nm.getMonth()+1).padStart(2,'0')}`;
-return{refYm:ref,label:`${MONTHS[nm.getMonth()]}/${nm.getFullYear()}`};
-}
+const forecasts = rollForecast(data,3);           // << NOVO
+const [f1,f2,f3]=forecasts;
 
-/* ---------- calcForecastPerCategory ----------- */
-function calcForecastPerCategory(all,ref){
-const map={};all.forEach(r=>{
-  const ym=r.date.slice(0,7);
-  (map[r.cat]=map[r.cat]||{})[ym]=(map[r.cat][ym]||0)+r.amt;
-});
-const out={};
-Object.keys(map).forEach(cat=>{
-  const months=Object.keys(map[cat]).sort();
-  const last3=months.slice(-3).map(m=>map[cat][m]);
-  const lastVal=last3[last3.length-1];
-  const isFix=/aluguel|condom|iptu|mensalidade|assinatura|seguro/i.test(cat);
-  if(isFix) out[cat]=lastVal??0;
-  else if(/supermercado/i.test(cat)){
-    const w=[3,2,1].slice(-last3.length);
-    out[cat]=parseFloat((last3.reduce((s,v,i)=>s+v*w[i],0)/w.reduce((a,b)=>a+b)).toFixed(2));
-  }else{
-    out[cat]=parseFloat((last3.reduce((s,v)=>s+v,0)/last3.length).toFixed(2));
+const barColors=[
+  '#34a853','#4285f4','#fbbc05','#ea4335','#ab47bc',
+  '#00acc1','#ff7043','#8d6e63','#cddc39','#5e35b1'
+];
+
+const cats = Array.from(new Set([
+  ...Object.keys(f1.byCat), ...Object.keys(f2.byCat), ...Object.keys(f3.byCat)
+]));
+
+forecastChart = new Chart(forecastCtx,{
+  type:'bar',
+  data:{
+    labels:cats,
+    datasets:[
+      {label:`Previsto para ${f1.label}`,
+       data:cats.map(c=>f1.byCat[c]||0),
+       backgroundColor:barColors.slice(0,cats.length),
+       stack:'m1'},
+      {label:`Previsto para ${f2.label}`,
+       data:cats.map(c=>f2.byCat[c]||0),
+       backgroundColor:barColors.slice(0,cats.length).map(c=>c+'cc'),
+       stack:'m2'},
+      {label:`Previsto para ${f3.label}`,
+       data:cats.map(c=>f3.byCat[c]||0),
+       backgroundColor:barColors.slice(0,cats.length).map(c=>c+'88'),
+       stack:'m3'}
+    ]
+  },
+  options:{
+    plugins:{legend:{display:true}},
+    scales:{y:{beginAtZero:true,
+               ticks:{callback:v=>'R$'+v.toLocaleString('pt-BR')}}}
   }
 });
-return out;
 }
+
+/* ---------- toggle do painel (inalterado) --------------- */
+prevBtn.onclick = () => {
+if (forecastBox.classList.contains('hidden')) {
+  drawForecast();
+  forecastBox.classList.remove('hidden');
+  prevBtn.classList.add('ring','ring-amber-300');
+} else {
+  forecastBox.classList.add('hidden');
+  prevBtn.classList.remove('ring','ring-amber-300');
+}
+};
+
+/* =========================================================
+ FIM DO BLOCO
+ ========================================================= */
 
 /* ---------- Chat comandos simples ------------- */
 chatSend.onclick = ()=>{
@@ -688,8 +850,9 @@ cats.forEach(c=>{
 return `Para economizar R$ ${alvo.toFixed(0)} sugiro: ${plano.join(', ')}.`;
 }
 function makeTotalForecast(){
-const next=getNextMonthObject();
-const total=Object.values(calcForecastPerCategory(data,next.refYm)).reduce((s,v)=>s+v,0);
+const next  = getNextMonthObject();
+const total = Object.values(forecastByCat(data, next.refYm))
+                    .reduce((s, v) => s + v, 0);
 return `Previsão total para ${next.label}: R$ ${total.toFixed(2)}.`;
 }
 

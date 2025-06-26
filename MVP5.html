@@ -4,104 +4,69 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OrçaAI – Analisador de Despesas</title>
+<!-- Tailwind e libs -->
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap">
 <style>
-body{font-family:"Inter",sans-serif;background:#f3f4f6}
-.drawer-enter{animation:slide .25s forwards}
-@keyframes slide{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+  body{font-family:"Inter",sans-serif;background:#f3f4f6}
+  .drawer-enter{animation:slide .25s forwards}
+  @keyframes slide{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
 </style>
 </head>
 <body class="text-gray-800">
 
-<!-- ===================== 1) UPLOAD ===================== -->
-<section id="uploadView" class="min-h-screen flex flex-col items-center justify-center p-6" style="background: linear-gradient(135deg, #34A853 0%, #0F9D58 100%);">
-  <div class="bg-white w-full max-w-lg p-6 rounded-3xl text-center shadow-2xl transition-all">
-
-    <!-- Logo -->
+<!-- =========================================================
+ 1) UPLOAD
+========================================================= -->
+<section id="uploadView" class="min-h-screen flex flex-col items-center justify-center p-6" style="background:linear-gradient(135deg,#34A853 0%,#0F9D58 100%);">
+  <div class="bg-white w-full max-w-lg p-6 rounded-3xl text-center shadow-2xl">
     <img src="logo.png" alt="Logo OrçaAI" class="w-36 mx-auto mb-4">
-
-    <!-- Slogan -->
-    <h1 class="text-2xl font-extrabold text-[#34A853] mb-2 leading-snug">O seu assistente financeiro inteligente</h1>
-
-    <!-- Subtexto -->
-    <p class="text-base text-gray-700 font-medium mb-4 leading-snug">
-      Planeje melhor. Gaste com inteligência.<br> Deixe o OrçaAI analisar suas despesas e mostrar onde você pode otimizar seus gastos.
-    </p>
-
+    <h1 class="text-2xl font-extrabold text-[#34A853] mb-2">O seu assistente financeiro inteligente</h1>
+    <p class="text-base text-gray-700 font-medium mb-4 leading-snug">Planeje melhor. Gaste com inteligência.<br>Deixe o OrçaAI analisar suas despesas e mostrar onde você pode otimizar seus gastos.</p>
     <!-- Dropzone -->
     <label for="csvInput" class="flex flex-col items-center justify-center w-full h-32 bg-[#E8F5E9] rounded-lg border-2 border-dashed border-[#34A853] cursor-pointer hover:bg-green-100 transition mb-4">
-      <svg class="w-8 h-8 text-[#34A853] mb-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-      </svg>
+      <svg class="w-8 h-8 text-[#34A853] mb-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
       <p class="text-sm text-[#34A853] font-medium">Clique ou arraste seu arquivo CSV aqui</p>
     </label>
     <input id="csvInput" type="file" accept=".csv" class="hidden" />
-
     <p id="uploadMsg" class="text-sm text-center text-gray-500 mb-3"></p>
-
-    <div class="text-center text-sm text-gray-500 mb-2">
-      — ou experimente agora mesmo —
-    </div>
-
-    <!-- Botão de dados de exemplo -->
+    <div class="text-center text-sm text-gray-500 mb-2">— ou experimente agora mesmo —</div>
     <div class="flex justify-center mb-4">
-      <button id="useDummy" class="bg-[#F4B400] hover:bg-yellow-500 text-white px-6 py-3 rounded-full shadow-lg font-semibold text-base transition">
-        Testar com dados de exemplo
-      </button>
+      <button id="useDummy" class="bg-[#F4B400] hover:bg-yellow-500 text-white px-6 py-3 rounded-full shadow-lg font-semibold">Testar com dados de exemplo</button>
     </div>
-
-    <!-- Botão de dashboard -->
     <div class="flex justify-center">
-      <button id="toDashBtn" disabled class="bg-[#34A853] hover:bg-green-700 text-white px-8 py-3 rounded-full text-base font-semibold shadow-lg transition disabled:opacity-40">
-        Ver Dashboard
-      </button>
+      <button id="toDashBtn" disabled class="bg-[#34A853] hover:bg-green-700 text-white px-8 py-3 rounded-full font-semibold shadow-lg transition disabled:opacity-40">Ver Dashboard</button>
     </div>
-
   </div>
 </section>
 
-<!-- ===================== 2) DASHBOARD ================== -->
-<section id="dashView" class="hidden flex flex-col min-h-screen" style="background: linear-gradient(135deg, #F0FFF4 0%, #F9FAFB 100%);">
-  
-  <!-- Cabeçalho -->
+<!-- =========================================================
+ 2) DASHBOARD
+========================================================= -->
+<section id="dashView" class="hidden flex flex-col min-h-screen" style="background:linear-gradient(135deg,#F0FFF4 0%,#F9FAFB 100%);">
   <header class="bg-white shadow p-4 flex justify-between items-center">
-    <!-- Logo + título -->
     <div class="flex items-center gap-3">
       <img src="logo.png" alt="OrçaAI" class="w-16">
       <h2 class="text-2xl font-bold text-[#34A853]">Dashboard</h2>
     </div>
-
     <div class="flex gap-4 items-center">
-
-      <!-- Período -->
       <div class="flex items-center gap-2">
         <span class="text-sm font-medium text-[#34A853]">Período:</span>
         <select id="periodSel" class="border rounded px-3 py-1 text-sm">
           <option value="all" selected>Todos</option>
           <option value="last3">Últimos 3 meses</option>
-          <!-- Os demais meses serão adicionados dinamicamente -->
         </select>
       </div>
-
-      <!-- Previsão -->
-      <button id="prevBtn" class="bg-[#F4B400] hover:bg-yellow-500 text-white px-4 py-2 rounded shadow font-semibold transition">
-        Ver Previsão
-      </button>
-
-      <!-- Insights -->
-      <button id="recBtn" class="bg-[#34A853] hover:bg-green-700 text-white px-4 py-2 rounded shadow font-semibold transition">
-        Insights
-      </button>
-
+      <button id="prevBtn" class="bg-[#F4B400] hover:bg-yellow-500 text-white px-4 py-2 rounded shadow font-semibold">Ver Previsão</button>
+      <!-- Add blue button -->
+      <button id="budgetBtn" class="bg-[#4285F4] hover:bg-blue-700 text-white px-4 py-2 rounded shadow font-semibold">Budget</button>
+      <button id="recBtn" class="bg-[#34A853] hover:bg-green-700 text-white px-4 py-2 rounded shadow font-semibold">Insights</button>
     </div>
   </header>
 
-  <!-- Conteúdo principal -->
   <main class="p-8 grow flex flex-col items-center">
-
     <!-- KPIs -->
     <div class="grid grid-cols-2 md:grid-cols-3 gap-6 mb-10 w-full max-w-5xl">
       <div class="bg-white p-5 rounded-3xl shadow text-center">
@@ -118,33 +83,30 @@ body{font-family:"Inter",sans-serif;background:#f3f4f6}
       </div>
     </div>
 
-    <!-- Gráficos -->
+    <!-- GRÁFICOS PRINCIPAIS -->
     <div class="grid grid-cols-1 lg:grid-cols-5 gap-8 w-full max-w-5xl">
       <div class="lg:col-span-2 bg-white p-5 rounded-3xl shadow">
         <h3 class="font-semibold mb-3 text-gray-700">Por categoria</h3>
         <canvas id="pie" height="220"></canvas>
       </div>
       <div class="lg:col-span-3 bg-white p-5 rounded-3xl shadow">
-        <h3 class="font-semibold mb-3 text-gray-700">Histórico mensal</h3>
+        <h3 class="font-semibold mb-3 text-gray-700">Histórico & Projeção</h3>
         <canvas id="line" height="220"></canvas>
       </div>
     </div>
 
-    <!-- Previsão (inicia oculta) -->
+    <!-- PREVISÃO DETALHADA -->
     <div id="forecastBox" class="bg-white p-6 rounded-3xl shadow w-full max-w-3xl mt-10 hidden">
-      <h3 class="font-semibold mb-4 text-center text-gray-700">Previsão – Próximo mês</h3>
+      <h3 class="font-semibold mb-4 text-center text-gray-700">Previsão (próximos 6 meses)</h3>
       <canvas id="forecastChart" height="200"></canvas>
     </div>
-
   </main>
 </section>
 
-
-<!-- ===================== 3) CHAT & LISTA ================ -->
-<div id="chatDrawer"
-  class="fixed top-0 right-0 w-full sm:w-96 h-full bg-white shadow-2xl flex flex-col z-50 hidden transition-all">
-
-  <!-- Header -->
+<!-- =========================================================
+ 3) CHAT (Insights)
+========================================================= -->
+<div id="chatDrawer" class="fixed top-0 right-0 w-full sm:w-96 h-full bg-white shadow-2xl flex flex-col z-50 hidden">
   <div class="flex justify-between items-center p-4 border-b">
     <div class="flex items-center gap-3">
       <div class="bg-[#34A853] text-white rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl">AI</div>
@@ -152,88 +114,60 @@ body{font-family:"Inter",sans-serif;background:#f3f4f6}
     </div>
     <button id="chatClose" class="text-3xl leading-none text-gray-500 hover:text-red-500">&times;</button>
   </div>
-
-  <!-- Área de mensagens -->
-  <div id="chatLog" class="flex-1 overflow-y-auto space-y-3 p-4 bg-[#F9FAFB] rounded-b-xl">
-    <!-- As mensagens serão adicionadas dinamicamente -->
-  </div>
-
-  <!-- Input -->
+  <div id="chatLog" class="flex-1 overflow-y-auto space-y-3 p-4 bg-[#F9FAFB]"></div>
   <div class="flex items-center p-3 border-t bg-white">
-    <input id="chatInp" class="flex-1 border rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-[#34A853] focus:outline-none"
-      placeholder="Digite sua mensagem..." />
-    <button id="chatSend"
-      class="ml-3 bg-[#34A853] hover:bg-green-700 text-white px-5 py-2 rounded-full font-semibold transition">
-      Enviar
-    </button>
+    <input id="chatInp" class="flex-1 border rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-[#34A853] focus:outline-none" placeholder="Digite sua mensagem..." />
+    <button id="chatSend" class="ml-3 bg-[#34A853] hover:bg-green-700 text-white px-5 py-2 rounded-full font-semibold">Enviar</button>
   </div>
-
 </div>
 
-
+<!-- =========================================================
+ 4) SCRIPT
+========================================================= -->
 <script>
-/* ---------- utilidades básicos ---------- */
-const br=v=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-const MONTHS=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+/* ---------- helpers & dados globais ---------- */
+const br = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+let data=[], view=[], pieChart, lineChart, forecastChart;
 
-let data=[],view=[],pieChart,lineChart,forecastChart;
+/* ---------- DOM refs ---------- */
+const uploadView=document.getElementById('uploadView'), dashView=document.getElementById('dashView');
+const csvInput=document.getElementById('csvInput'), uploadMsg=document.getElementById('uploadMsg'), toDashBtn=document.getElementById('toDashBtn'), useDummy=document.getElementById('useDummy');
+const periodSel=document.getElementById('periodSel'), totEl=document.getElementById('tot'), bigEl=document.getElementById('big'), topEl=document.getElementById('top');
+const pieCtx=document.getElementById('pie'), lineCtx=document.getElementById('line');
+const prevBtn=document.getElementById('prevBtn'), forecastBox=document.getElementById('forecastBox'), forecastCtx=document.getElementById('forecastChart');
+const recBtn=document.getElementById('recBtn'), drawer=document.getElementById('chatDrawer'), chatTitle=document.getElementById('chatTitle'), chatLog=document.getElementById('chatLog'), chatInp=document.getElementById('chatInp'), chatSend=document.getElementById('chatSend'), chatClose=document.getElementById('chatClose');
+const budgetBtn=document.getElementById('budgetBtn'), budgetModal=document.getElementById('budgetModal'), salaryInput=document.getElementById('salaryInput'), saveBudgetBtn=document.getElementById('saveBudgetBtn'), budgetClose=document.getElementById('budgetClose'), budgetResults=document.getElementById('budgetResults');
 
-/* ---------- elementos principais ---------- */
-const uploadView=document.getElementById('uploadView'),
-     dashView  =document.getElementById('dashView');
-
-const csvInput=document.getElementById('csvInput'),
-     uploadMsg=document.getElementById('uploadMsg'),
-     toDashBtn=document.getElementById('toDashBtn'),
-     useDummy =document.getElementById('useDummy');
-
-const periodSel=document.getElementById('periodSel'),
-     totEl=document.getElementById('tot'),
-     bigEl=document.getElementById('big'),
-     topEl=document.getElementById('top'),
-     pieCtx=document.getElementById('pie'),
-     lineCtx=document.getElementById('line');
-
-const prevBtn    =document.getElementById('prevBtn'),
-     forecastBox=document.getElementById('forecastBox'),
-     forecastCtx=document.getElementById('forecastChart');
-
-const recBtn   =document.getElementById('recBtn'),
-     drawer   =document.getElementById('chatDrawer'),
-     chatTitle=document.getElementById('chatTitle'),
-     chatLog  =document.getElementById('chatLog'),
-     chatInp  =document.getElementById('chatInp'),
-     chatSend =document.getElementById('chatSend'),
-     chatClose=document.getElementById('chatClose');
-
-/* ------------ CHAT : funções básicas -------------- */
+/* =========================================================
+   1) CHAT BÁSICO
+========================================================= */
 function addMsg(txt,cls){
- const div=document.createElement('div');
- div.className=`p-2 rounded ${cls==='user'?'bg-blue-600 text-white self-end':'bg-gray-200 self-start'}`;
- div.textContent=txt;
- chatLog.append(div);
- chatLog.scrollTop=chatLog.scrollHeight;
+  const div=document.createElement('div');
+  div.className=`p-2 rounded ${cls==='user'? 'bg-blue-600 text-white self-end':'bg-gray-200 self-start'}`;
+  div.textContent=txt;
+  chatLog.append(div);
+  chatLog.scrollTop=chatLog.scrollHeight;
 }
 function bot(txt){ addMsg(txt,'bot'); }
-
 function openChat(cat,list){
- drawer.classList.remove('hidden');
- chatLog.innerHTML='';
- chatTitle.textContent=cat?`Gastos: ${cat}`:'Insights';
-
- if(cat && list){
+  drawer.classList.remove('hidden');
+  chatLog.innerHTML='';
+  chatTitle.textContent = cat ? `Gastos: ${cat}` : 'Insights';
+  if(cat && list){
     list.forEach(r=>addMsg(`${r.desc} • ${br(r.amt)}`,'bot'));
     bot(`Total em ${cat}: ${br(list.reduce((s,r)=>s+r.amt,0))}`);
- }else{
-    bot('Olá! Posso ajudar com Insights.');
- }
+  }else{ bot('Olá! Posso ajudar com Insights.'); }
 }
-chatClose.addEventListener('click',()=>drawer.classList.add('hidden'));
-recBtn.addEventListener('click',()=>openChat());
+chatClose.onclick=()=>drawer.classList.add('hidden');
+recBtn.onclick=()=>openChat();
 
-/* ------------- CSV / Dummy ----------------------- */
+/* =========================================================
+   2) LOAD CSV ou Dummy
+========================================================= */
 useDummy.onclick=()=>{
-data=[
+  data=[
+
 {date:'2025-01-02',desc:'Supermercado Pão de Açúcar', cat:'Alimentação', amt: 350.70},
 {date:'2025-01-03',desc:'Café da Manhã Padaria',    cat:'Alimentação', amt:  18.50},
 {date:'2025-01-05',desc:'Condomínio Edifício Sol',   cat:'Moradia',     amt: 450.00},
@@ -458,406 +392,266 @@ data=[
 {date:'2025-12-23',desc:'Spotify Premium',           cat:'Outros',      amt:  19.90},
 {date:'2025-12-27',desc:'Check-up Anual',            cat:'Saúde',       amt: 600.00},
 {date:'2025-12-29',desc:'Viagem Fim de Ano (parte)', cat:'Lazer',       amt: 700.00}, // Gasto maior de viagem
-{date:'2025-12-30',desc:'Compras Supermercado Réveillon',cat:'Alimentação',amt:250.00}];                       // coloquei vazio só p/ teste
-uploadMsg.textContent='Dados de demonstração carregados.';
-toDashBtn.disabled=false;
+{date:'2025-12-30',desc:'Compras Supermercado Réveillon',cat:'Alimentação',amt:250.00}
+
+  ];
+  uploadMsg.textContent='Dados de demonstração carregados.';
+  toDashBtn.disabled=false;
 };
 
-/* ... PARSE CSV (mesmo código que já tinha) ... */
 csvInput.onchange=e=>{
-const f=e.target.files[0];if(!f){toDashBtn.disabled=true;return;}
-Papa.parse(f,{header:true,skipEmptyLines:true,delimiter:'auto',trimHeaders:true,
- transformHeader:h=>h.trim(),transform:v=>v.trim(),
- complete:({data:rows})=>{
-   const pick=(o,...k)=>k.map(x=>o[x]).find(v=>v!==undefined);
-   data=rows.map(r=>{
-     const raw=(pick(r,'amount','Amount','valor','Valor')||'').replace(/\./g,'').replace(',','.');
-     return{date:(pick(r,'date','Date','data','Data')||'').split(' ')[0],
-            desc:pick(r,'description','Description','descricao','Descrição')||'',
-            cat: pick(r,'category','Category','categoria','Categoria')||'',
-            amt: parseFloat(raw)};
-   }).filter(r=>r.date&&r.cat&&!isNaN(r.amt));
-   if(!data.length){uploadMsg.textContent='Nenhuma linha válida.';toDashBtn.disabled=true;}
-   else{uploadMsg.textContent=`${data.length} lançamentos carregados.`;toDashBtn.disabled=false;}
- },
- error:()=>{uploadMsg.textContent='Erro ao ler CSV.';toDashBtn.disabled=true;}
-});
+  const f=e.target.files[0]; if(!f){toDashBtn.disabled=true;return;}
+  Papa.parse(f,{
+    header:true, skipEmptyLines:true, delimiter:'auto', trimHeaders:true,
+    transformHeader:h=>h.trim(), transform:v=>v.trim(),
+    complete:({data:rows})=>{
+      const pick=(o,...k)=>k.map(x=>o[x]).find(v=>v!==undefined);
+      data=rows.map(r=>{
+        const raw=(pick(r,'amount','Amount','valor','Valor')||'').replace(/\./g,'').replace(',','.');
+        return { date:(pick(r,'date','Date','data','Data')||'').split(' ')[0], desc:pick(r,'description','Description','descricao','Descrição')||'', cat:pick(r,'category','Category','categoria','Categoria')||'', amt:parseFloat(raw) };
+      }).filter(r=>r.date&&r.cat&&!isNaN(r.amt));
+      if(!data.length){ uploadMsg.textContent='Nenhuma linha válida.'; toDashBtn.disabled=true; }
+      else { uploadMsg.textContent=`${data.length} lançamentos carregados.`; toDashBtn.disabled=false; }
+    },
+    error:()=>{uploadMsg.textContent='Erro ao ler CSV.';toDashBtn.disabled=true;}
+  });
 };
 
-/* ---------- entrar no dashboard -------------- */
-toDashBtn.onclick=()=>{
-uploadView.classList.add('hidden');
-dashView.classList.remove('hidden');
-fillSelect(); refreshDash();
-};
-
-/* ---------- select períodos ------------------ */
+/* =========================================================
+   3) ENTRAR NO DASH
+========================================================= */
 function fillSelect(){
-periodSel.innerHTML='';
-periodSel.add(new Option('Todos','all'));
-periodSel.add(new Option('Últimos 3 meses','last3'));
-[...new Set(data.map(r=>r.date.slice(0,7)))].sort()
-  .forEach(m=>{const [y,mo]=m.split('-');
-               periodSel.add(new Option(`${MONTHS[+mo-1]}/${y}`,m));});
-periodSel.value='all';
+  periodSel.innerHTML='';
+  periodSel.add(new Option('Todos','all'));
+  periodSel.add(new Option('Últimos 3 meses','last3'));
+  [...new Set(data.map(r=>r.date.slice(0,7)))].sort().forEach(m=>{
+    const [y,mo]=m.split('-');
+    periodSel.add(new Option(`${MONTHS[+mo-1]}/${y}`,m));
+  });
+  periodSel.value='all';
 }
+
+toDashBtn.onclick=()=>{
+  uploadView.classList.add('hidden');
+  dashView.classList.remove('hidden');
+  fillSelect();
+  refreshDash();
+};
 periodSel.onchange=refreshDash;
 
-/* ---------- refresh KPI + charts ------------- */
+/* =========================================================
+   4) KPI + GRÁFICOS
+========================================================= */
 function refreshDash(){
-forecastBox.classList.add('hidden');
-const v=periodSel.value;
-view=(v==='all')?data:
-     (v==='last3')?data.filter(r=>new Date(r.date)>=new Date(new Date().setMonth(new Date().getMonth()-2))):
-                   data.filter(r=>r.date.startsWith(v));
-
-if(!view.length){
-  totEl.textContent=bigEl.textContent='R$0,00';topEl.textContent='-';
-  drawPie({});drawLine();return;
-}
-const total=view.reduce((s,r)=>s+r.amt,0);
-const maior=Math.max(...view.map(r=>r.amt));
-const catSum={};view.forEach(r=>catSum[r.cat]=(catSum[r.cat]||0)+r.amt);
-const topCat=Object.entries(catSum).sort((a,b)=>b[1]-a[1])[0][0];
-totEl.textContent=br(total);bigEl.textContent=br(maior);topEl.textContent=topCat;
-drawPie(catSum);drawLine();
-}
-
-/* ---------- Pie chart ------------------------- */
-function drawPie(catSum){
-if(pieChart)pieChart.destroy();
-const labels=Object.keys(catSum),vals=Object.values(catSum),
-      colors=['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6','#06b6d4','#a855f7','#f97316'];
-pieChart=new Chart(pieCtx,{type:'doughnut',
-  data:{labels,datasets:[{data:vals,backgroundColor:colors.slice(0,labels.length)}]},
-  options:{plugins:{legend:{position:'bottom'}},
-           onClick:(e,els)=>{if(!els.length)return;
-                const cat=labels[els[0].index];
-                const lst=view.filter(r=>r.cat===cat).sort((a,b)=>b.amt-a.amt);
-                openChat(cat,lst);}}
-});
-}
-
-/* =========================================================
- BLOCO ‑ NOVA ROTINA DE PREVISÃO + GRÁFICOS
- ========================================================= */
-
-/* ---------- helpers numéricos --------------------------- */
-const mean          = arr => arr.length ? arr.reduce((s,v)=>s+v,0)/arr.length : 0;
-const weightedAvg   = (arr,w) => {
-if(!arr.length) return 0;
-const ww = w.slice(-arr.length);
-return arr.reduce((s,v,i)=>s+v*ww[i],0)/ww.reduce((a,b)=>a+b);
-};
-const quantile      = (arr,q)=>{
-if(!arr.length) return 0;
-const s=[...arr].sort((a,b)=>a-b);
-const pos = (s.length-1)*q;
-const base = Math.floor(pos);
-const rest = pos-base;
-return s[base] + (s[base+1]-s[base] || 0)*rest;
-};
-const removeOutliers = arr=>{
-if(arr.length<4) return arr;
-const q1 = quantile(arr,.25), q3=quantile(arr,.75), iqr=q3-q1;
-return arr.filter(x=>x>=q1-1.5*iqr && x<=q3+1.5*iqr);
-};
-
-/* ---------- modelos simples ----------------------------- */
-function ses(series,alpha=.4){       // Suavização exponencial simples
-let s = series[0] ?? 0;
-for(let i=1;i<series.length;i++) s = alpha*series[i] + (1-alpha)*s;
-return s;
-}
-const MODELS = {
-fixed : series => series.at(-1) ?? 0,
-avg3  : series => mean(series.slice(-3)),
-wavg3 : series => weightedAvg(series.slice(-3),[3,2,1]),
-ses   : series => ses(series)
-};
-function chooseModel(cat){
-if(/aluguel|condom|iptu|mensalidade|assinatura|seguro/i.test(cat)) return 'fixed';
-if(/supermercado/i.test(cat))                                     return 'wavg3';
-return 'ses';
-}
-
-/* ---------- agregadores --------------------------------- */
-function buildMonthlyMap(records){           // p/ fator sazonal
-const map={};
-records.forEach(r=>{
-  const m=new Date(r.date).getMonth();     // 0-11
-  (map[r.cat]=map[r.cat]||Array(12).fill(0))[m]+=r.amt;
-});
-return map;
-}
-function getCatMonthlyTotals(records){       // série cronológica
-const tmp={};
-records.forEach(r=>{
-  const ym=r.date.slice(0,7);
-  (tmp[r.cat]=tmp[r.cat]||{})[ym]=(tmp[r.cat][ym]||0)+r.amt;
-});
-const out={};
-Object.keys(tmp).forEach(cat=>{
-  const months=Object.keys(tmp[cat]).sort();
-  out[cat]=months.map(m=>tmp[cat][m]);
-});
-return out;
-}
-function seasonalFactor(cat,targetMonth,map){   // 0-11
-const arr=map[cat]||[];
-const overall=mean(arr);
-if(!overall) return 1;
-return (arr[targetMonth]||overall)/overall;
-}
-
-/* ---------- previsão por categoria ---------------------- */
-function forecastByCat(baseData,refYm){
-const seriesMap   = getCatMonthlyTotals(baseData);
-const monthlyMap  = buildMonthlyMap(baseData);
-const targetMonth = +refYm.slice(5)-1;          // 0-11
-const out={};
-for(const [cat,series] of Object.entries(seriesMap)){
-  const clean   = removeOutliers(series);
-  const mdlName = chooseModel(cat);
-  const rawVal  = MODELS[mdlName](clean);
-  const factor  = seasonalFactor(cat,targetMonth,monthlyMap);
-  out[cat]      = +(rawVal*factor).toFixed(2);
-}
-return out;
-}
-
-/* ---------- cria lançamentos sintéticos ----------------- */
-function makeForecastData(byCat, refYm){
-return Object.entries(byCat).map(([cat,amt])=>({
-  date: refYm+'-10',        // dia fictício
-  desc: '[Previsão]',
-  cat,
-  amt
-}));
-}
-
-/* ---------- getNextMonthObject -------------------------- */
-/* suporta deslocamento: 0 = mês seguinte, 1 = +2 meses ... */
-function getNextMonthObject(offset = 0){
-const baseDate = data.length
-      ? new Date(Math.max(...data.map(r => new Date(r.date))))
-      : new Date();                                     // sem dados → hoje
-
-const nm  = new Date(baseDate.getFullYear(),
-                     baseDate.getMonth() + 1 + offset, 1);
-
-const ref = `${nm.getFullYear()}-${String(nm.getMonth()+1).padStart(2,'0')}`;
-return { refYm: ref, label: `${MONTHS[nm.getMonth()]}/${nm.getFullYear()}` };
-}
-
-/* ---------- gera N meses à frente ----------------------- */
-function rollForecast(baseData,months=3){
-let cur=[...baseData];
-const out=[];
-for(let k=0;k<months;k++){
-  const next = getNextMonthObject(k);     // usa função já existente
-  const byCat= forecastByCat(cur,next.refYm);
-  out.push({...next,byCat});
-  cur = [...cur, ...makeForecastData(byCat,next.refYm)];
-}
-return out;
-}
-
-/* =========================================================
- GRÁFICOS
- ========================================================= */
-
-/* ---------- Line chart + previsão total ----------------- */
-function drawLine(){
-if(lineChart) lineChart.destroy();
-
-/* 1. histórico -------------------------------------------------- */
-const sel=periodSel.value,now=new Date();let histLabels=[];
-if(sel==='all'){
-  const y=data[0]?.date.slice(0,4)||now.getFullYear();
-  histLabels=Array.from({length:12},(_,i)=>`${y}-${String(i+1).padStart(2,'0')}`);
-}else if(sel==='last3'){
-  for(let i=2;i>=0;i--){
-    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
-    histLabels.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
-  }
-}else histLabels=[sel];
-
-const histVals=histLabels.map(m=>
-  view.filter(r=>r.date.startsWith(m)).reduce((s,r)=>s+r.amt,0));
-
-/* 2. previsão (3 meses) ---------------------------------------- */
-const forecasts = rollForecast(data,3);                 // << NOVO
-const forecastTotals = forecasts.map(f=>Object.values(f.byCat)
-                                      .reduce((s,v)=>s+v,0));
-
-/* 3. monta e exibe --------------------------------------------- */
-const labs = [...histLabels.map(m=>`${MONTHS[+m.slice(5)-1]}/${m.slice(0,4)}`),
-              ...forecasts.map(f=>f.label)];
-const histData = [...histVals, ...Array(3).fill(null)];
-// cria vetores do mesmo tamanho da label-axis, todos nulos
-const projData1 = Array(labs.length).fill(null);
-const projData2 = Array(labs.length).fill(null);
-const projData3 = Array(labs.length).fill(null);
-
-// injeta os valores previstos no ponto correto
-projData1[histVals.length]   = forecastTotals[0];
-projData2[histVals.length+1] = forecastTotals[1];
-projData3[histVals.length+2] = forecastTotals[2];
-
-lineChart = new Chart(lineCtx,{
-  type:'line',
-  data:{labels:labs,
-    datasets:[
-      {label:'Histórico',data:histData,borderColor:'#3b82f6',
-       backgroundColor:'rgba(59,130,246,.15)',fill:true,tension:.3},
-      {label:`Projeção total (${forecasts[0].label})`,data:projData1,
-       borderColor:'#10b981',borderDash:[6,4],pointStyle:'rect',fill:false,tension:.3},
-      {label:`Projeção total (${forecasts[1].label})`,data:projData2,
-       borderColor:'#f59e0b',borderDash:[6,4],pointStyle:'rect',fill:false,tension:.3},
-      {label:`Projeção total (${forecasts[2].label})`,data:projData3,
-       borderColor:'#ea4335',borderDash:[6,4],pointStyle:'rect',fill:false,tension:.3}
-    ]},
-  options:{plugins:{legend:{position:'top'}},
-           scales:{y:{ticks:{callback:v=>'R$'+v.toLocaleString('pt-BR')}}}}
-});
-}
-
-/* ---------- painel previsão detalhada ------------------- */
-function drawForecast(){
-if(forecastChart) forecastChart.destroy();
-
-const forecasts = rollForecast(data,3);           // << NOVO
-const [f1,f2,f3]=forecasts;
-
-const barColors=[
-  '#34a853','#4285f4','#fbbc05','#ea4335','#ab47bc',
-  '#00acc1','#ff7043','#8d6e63','#cddc39','#5e35b1'
-];
-
-const cats = Array.from(new Set([
-  ...Object.keys(f1.byCat), ...Object.keys(f2.byCat), ...Object.keys(f3.byCat)
-]));
-
-forecastChart = new Chart(forecastCtx,{
-  type:'bar',
-  data:{
-    labels:cats,
-    datasets:[
-      {label:`Previsto para ${f1.label}`,
-       data:cats.map(c=>f1.byCat[c]||0),
-       backgroundColor:barColors.slice(0,cats.length),
-       stack:'m1'},
-      {label:`Previsto para ${f2.label}`,
-       data:cats.map(c=>f2.byCat[c]||0),
-       backgroundColor:barColors.slice(0,cats.length).map(c=>c+'cc'),
-       stack:'m2'},
-      {label:`Previsto para ${f3.label}`,
-       data:cats.map(c=>f3.byCat[c]||0),
-       backgroundColor:barColors.slice(0,cats.length).map(c=>c+'88'),
-       stack:'m3'}
-    ]
-  },
-  options:{
-    plugins:{legend:{display:true}},
-    scales:{y:{beginAtZero:true,
-               ticks:{callback:v=>'R$'+v.toLocaleString('pt-BR')}}}
-  }
-});
-}
-
-/* ---------- toggle do painel (inalterado) --------------- */
-prevBtn.onclick = () => {
-if (forecastBox.classList.contains('hidden')) {
-  drawForecast();
-  forecastBox.classList.remove('hidden');
-  prevBtn.classList.add('ring','ring-amber-300');
-} else {
   forecastBox.classList.add('hidden');
-  prevBtn.classList.remove('ring','ring-amber-300');
+  const v=periodSel.value;
+  view = v==='all' ? data :
+         v==='last3' ? data.filter(r=> new Date(r.date)>=new Date(new Date().setMonth(new Date().getMonth()-2))) :
+         data.filter(r=> r.date.startsWith(v));
+  if(!view.length){
+    totEl.textContent=bigEl.textContent='R$0,00'; topEl.textContent='-';
+    drawPie({}); drawLine(); return;
+  }
+  const total=view.reduce((s,r)=>s+r.amt,0);
+  const maior=Math.max(...view.map(r=>r.amt));
+  const catSum={}; view.forEach(r=>catSum[r.cat]=(catSum[r.cat]||0)+r.amt);
+  const topCat=Object.entries(catSum).sort((a,b)=>b[1]-a[1])[0][0];
+  totEl.textContent=br(total); bigEl.textContent=br(maior); topEl.textContent=topCat;
+  drawPie(catSum); drawLine();
 }
+
+/* ---------- Pie ---------- */
+function drawPie(catSum){
+  if(pieChart) pieChart.destroy();
+  const labels=Object.keys(catSum);
+  if(!labels.length) return;
+  const vals=Object.values(catSum), colors=['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6','#06b6d4','#a855f7','#f97316'];
+  pieChart=new Chart(pieCtx,{type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:colors.slice(0,labels.length)}]},options:{plugins:{legend:{position:'bottom'}},onClick:(e,els)=>{
+    if(!els.length) return;
+    const cat=labels[els[0].index];
+    const lst=view.filter(r=>r.cat===cat).sort((a,b)=>b.amt-a.amt);
+    openChat(cat,lst);
+  }}});
+}
+
+/* =========================================================
+   5) PREVISÃO (Helpers numéricos + Modelos)
+========================================================= */
+const mean=arr=>arr.length?arr.reduce((s,v)=>s+v,0)/arr.length:0;
+const weightedAvg=(arr,w)=>{ if(!arr.length) return 0; const ww=w.slice(-arr.length); return arr.reduce((s,v,i)=>s+v*ww[i],0)/ww.reduce((a,b)=>a+b); };
+const quantile=(arr,q)=>{ if(!arr.length) return 0; const s=[...arr].sort((a,b)=>a-b); const pos=(s.length-1)*q; const base=Math.floor(pos); const rest=pos-base; return s[base] + (s[base+1]-s[base] || 0)*rest; };
+const removeOutliers=arr=>{ if(arr.length<4) return arr; const q1=quantile(arr,.25), q3=quantile(arr,.75), iqr=q3-q1; return arr.filter(x=>x>=q1-1.5*iqr&&x<=q3+1.5*iqr); };
+function ses(series,alpha=.4){ let s=series[0]??0; for(let i=1;i<series.length;i++) s=alpha*series[i]+(1-alpha)*s; return s; }
+const MODELS={ fixed:series=>series.at(-1)??0, avg3:series=>mean(series.slice(-3)), wavg3:series=>weightedAvg(series.slice(-3),[3,2,1]), ses:series=>ses(series) };
+function chooseModel(cat){ if(/aluguel|condom|iptu|mensalidade|assinatura|seguro/i.test(cat)) return 'fixed'; if(/supermercado/i.test(cat)) return 'wavg3'; return 'ses'; }
+function buildMonthlyMap(records){ const map={}; records.forEach(r=>{ const m=new Date(r.date).getMonth(); (map[r.cat]=map[r.cat]||Array(12).fill(0))[m]+=r.amt; }); return map; }
+function getCatMonthlyTotals(records){ const tmp={}; records.forEach(r=>{ const ym=r.date.slice(0,7); (tmp[r.cat]=tmp[r.cat]||{})[ym]=(tmp[r.cat][ym]||0)+r.amt; }); const out={}; Object.keys(tmp).forEach(cat=>{ const months=Object.keys(tmp[cat]).sort(); out[cat]=months.map(m=>tmp[cat][m]); }); return out; }
+function seasonalFactor(cat,targetMonth,map){ const arr=map[cat]||[]; const overall=mean(arr); if(!overall) return 1; return (arr[targetMonth]||overall)/overall; }
+function forecastByCat(baseData,refYm){ const seriesMap=getCatMonthlyTotals(baseData); const monthlyMap=buildMonthlyMap(baseData); const targetMonth=+refYm.slice(5)-1; const out={}; for(const [cat,series] of Object.entries(seriesMap)){ const clean=removeOutliers(series); const mdlName=chooseModel(cat); const rawVal=MODELS[mdlName](clean); const factor=seasonalFactor(cat,targetMonth,monthlyMap); out[cat]=+(rawVal*factor).toFixed(2);} return out; }
+function makeForecastData(byCat,refYm){ return Object.entries(byCat).map(([cat,amt])=>({date:refYm+'-10',desc:'[Previsão]',cat,amt})); }
+function getNextMonthObject(offset=0){ const baseDate=data.length?new Date(Math.max(...data.map(r=>new Date(r.date)))):new Date(); const nm=new Date(baseDate.getFullYear(),baseDate.getMonth()+1+offset,1); const ref=`${nm.getFullYear()}-${String(nm.getMonth()+1).padStart(2,'0')}`; return {refYm:ref,label:`${MONTHS[nm.getMonth()]}/${nm.getFullYear()}`}; }
+function rollForecast(baseData,months=3){ let cur=[...baseData], out=[]; for(let k=0;k<months;k++){ const next=getNextMonthObject(k); const byCat=forecastByCat(cur,next.refYm); out.push({...next,byCat}); cur=[...cur,...makeForecastData(byCat,next.refYm)]; } return out; }
+
+/* ---------- Line com histórico + projeção ---------- */
+function drawLine(){
+  if(lineChart) lineChart.destroy();
+  if(!data.length) return;
+
+  // histórico
+  const sel=periodSel.value, now=new Date(); let histLabels=[];
+  if(sel==='all'){ const y=data[0]?.date.slice(0,4)||now.getFullYear(); histLabels=Array.from({length:12},(_,i)=>`${y}-${String(i+1).padStart(2,'0')}`); }
+  else if(sel==='last3'){ for(let i=2;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); histLabels.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);} }
+  else histLabels=[sel];
+  const histVals=histLabels.map(m=> view.filter(r=>r.date.startsWith(m)).reduce((s,r)=>s+r.amt,0));
+
+  // previsão próximos 3 meses
+  const forecasts=rollForecast(data,3);
+  const forecastTotals=forecasts.map(f=>Object.values(f.byCat).reduce((s,v)=>s+v,0));
+
+  const labs=[...histLabels.map(m=>`${MONTHS[+m.slice(5)-1]}/${m.slice(0,4)}`), ...forecasts.map(f=>f.label)];
+  const histData=[...histVals, ...Array(3).fill(null)];
+  const projData=Array(labs.length).fill(null);
+  projData.splice(histVals.length,3,...forecastTotals);
+
+  lineChart=new Chart(lineCtx,{type:'line',data:{labels:labs,datasets:[{label:'Histórico',data:histData,borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.15)',fill:true,tension:.3},{label:'Projeção total',data:projData,borderColor:'#10b981',borderDash:[6,4],fill:false,tension:.3}]},options:{plugins:{legend:{position:'top'}},scales:{y:{ticks:{callback:v=>'R$'+v.toLocaleString('pt-BR')}}}}});
+}
+
+/* ---------- Bar detalhado (stack por mês) ---------- */
+function drawForecast(){
+  if(forecastChart) forecastChart.destroy();
+  const forecasts=rollForecast(data,6); // ← ALTERADO para 12 meses
+  const cats=Array.from(new Set(forecasts.flatMap(f=>Object.keys(f.byCat)))).sort();
+  const colors=['#34a853','#4285f4','#fbbc05','#ab47bc','#00acc1','#ff7043','#8d6e63','#cddc39','#5e35b1'];
+
+  forecastChart=new Chart(forecastCtx,{type:'bar',data:{labels:cats,datasets:forecasts.map((f,i)=>({label:f.label,data:cats.map(c=>f.byCat[c]||0),backgroundColor:colors[i%colors.length]+'bb'}))},options:{plugins:{legend:{display:true}},scales:{y:{beginAtZero:true,ticks:{callback:v=>'R$'+v.toLocaleString('pt-BR')}}}}});
+}
+
+prevBtn.onclick=()=>{
+  if(forecastBox.classList.contains('hidden')){ drawForecast(); forecastBox.classList.remove('hidden'); prevBtn.classList.add('ring','ring-amber-300'); }
+  else { forecastBox.classList.add('hidden'); prevBtn.classList.remove('ring','ring-amber-300'); }
 };
 
 /* =========================================================
- FIM DO BLOCO
- ========================================================= */
+   6) INSIGHTS (exemplos simples)
+========================================================= */
+function lastMonths(n, predicate){ const ymList=[...new Set(data.map(r=>r.date.slice(0,7)))].sort().slice(-n); return ymList.reduce((sum,ym)=> sum + data.filter(r=>r.date.startsWith(ym) &&(!predicate || predicate(r))).reduce((s,r)=>s+r.amt,0),0)/n; }
+function makeInsight(cmd){ if(/assinatura/.test(cmd)){ const cur=lastMonths(1,r=>/assinatura/i.test(r.desc)); const prev=lastMonths(6,r=>/assinatura/i.test(r.desc)); const diff=prev?((cur-prev)/prev*100).toFixed(1):'-'; return `Assinaturas em ${br(cur)} (${diff==='-'?'sem comparação':diff+'% vs. média 6m'})`; }
+  const cur=lastMonths(1), prev=lastMonths(2), pct=prev?((cur-prev)/prev*100).toFixed(1)+'%':'-'; return `Total do mês: ${br(cur)} (${pct} vs. média 2m)`; }
+function makeTotalForecast(){ const next=getNextMonthObject(); const total=Object.values(forecastByCat(data,next.refYm)).reduce((s,v)=>s+v,0); return `Previsão total para ${next.label}: ${br(total)}`; }
+chatSend.onclick = () => {
+  const q = chatInp.value.trim();
+  if (!q) return;
+  addMsg(q, 'user');
+  chatInp.value = '';
 
-/* ---------- Chat comandos simples ------------- */
-chatSend.onclick = ()=>{
-const q = chatInp.value.trim();
-if(!q) return;
-addMsg(q,'user');
-chatInp.value = '';
+  // Busca resposta simulada
+  const sim = chatSimulado.find(f => f.pergunta.test(q));
+  if (sim) {
+    setTimeout(() => bot(typeof sim.resposta === 'function' ? sim.resposta() : sim.resposta), 500);
+    return;
+  }
 
-const txt = q.toLowerCase();
-if(/insight/.test(txt)){ bot(makeInsight(txt)); return; }
-if(/economizar|cortar/.test(txt)){ bot(makeSavingsPlan(txt)); return; }
-if(/previs(ão|ao)/.test(txt)){ bot(makeTotalForecast()); return; }
-
-bot('Ainda não entendi. Tente “Insight geral”, “Economizar 500” ou “Previsão”.');
+  // Resposta padrão se não encontrar
+  setTimeout(() => bot('Desculpe, não entendi. Tente perguntar sobre "maior gasto", "últimos gastos", "previsão" ou "dica para economizar".'), 500);
 };
 
-/* ========== helpers de insight / economia ========== */
-function lastMonths(n, predicate){
-const ymList = [...new Set(data.map(r=>r.date.slice(0,7)))].sort().slice(-n);
-return ymList.reduce((sum,ym)=>{
-    return sum + data
-      .filter(r=>r.date.startsWith(ym) && (!predicate || predicate(r)))
-      .reduce((s,r)=>s+r.amt,0);
-},0) / n;
-}
-
-function makeInsight(cmd){
-/* --- insight de assinaturas (procura na descrição) --- */
-if(/assinatura/.test(cmd)){
-     const cur  = lastMonths(1 , r=>/assinatura/i.test(r.desc));
-     const prev = lastMonths(6 , r=>/assinatura/i.test(r.desc));
-     const diff = prev ? ((cur-prev)/prev*100).toFixed(1) : '-';
-     return `Assinaturas estão em ${br(cur)} (${diff === '-' ? 'sem base de comparação' : diff+'% vs. média 6 m'}).`;
-}
-
-/* --- insight de conta de luz ------------------------- */
-if(/luz|energia/.test(cmd)){
-     const cur  = lastMonths(1 , r=>/luz|energia/i.test(r.desc));
-     const prev = lastMonths(3 , r=>/luz|energia/i.test(r.desc));
-     const diff = prev ? ((cur-prev)/prev*100).toFixed(1) : '-';
-     return `Conta de luz: ${br(cur)} (${diff==='-'?'sem base': diff+'% vs. média 3 m'}).`;
-}
-
-/* --- insight genérico ------------------------------- */
-const cur  = lastMonths(1);
-const prev = lastMonths(2);
-const pct  = prev ? ((cur-prev)/prev*100).toFixed(1)+'%' : '-';
-return `Total do mês: ${br(cur)} (${pct} vs. média 2 m).`;
-}
-function makeSavingsPlan(txt){
-const val=txt.match(/(\d{2,})/);const pct=txt.match(/(\d{1,2})\s*%/);
-let alvo=0;
-if(val) alvo=parseFloat(val[1]);
-else if(pct){const perc=parseFloat(pct[1])/100;
-  const variav=data.filter(r=>/lazer|delivery|restaurante|vestuário|café/i.test(r.cat));
-  alvo=variav.reduce((s,r)=>s+r.amt,0)*perc;
-}else return 'Informe um valor ou %: “Economizar 500” ou “Cortar 15%”.';
-const cats=['Lazer','Delivery','Restaurantes','Vestuário','Cafés & Lanches'];
-let sobra=alvo,plano=[];
-cats.forEach(c=>{
-  const g=lastMonths(1,new RegExp(c,'i'));
-  if(sobra>0&&g>0){
-    const cut=Math.min(g*0.4,sobra);
-    plano.push(`${c} -R$ ${cut.toFixed(0)}`);sobra-=cut;
-  }
-});
-return `Para economizar R$ ${alvo.toFixed(0)} sugiro: ${plano.join(', ')}.`;
-}
-function makeTotalForecast(){
-const next  = getNextMonthObject();
-const total = Object.values(forecastByCat(data, next.refYm))
-                    .reduce((s, v) => s + v, 0);
-return `Previsão total para ${next.label}: R$ ${total.toFixed(2)}.`;
-}
-
-/* --------- auto-load dummy                */
+/* =========================================================
+   AUTOLOAD DUMMY PARA DEMO
+========================================================= */
 useDummy.click();
+
+// Fluxo de conversa simulado para insights
+const chatSimulado = [
+  {
+    pergunta: /maior gasto|maior categoria|onde gastei mais/i,
+    resposta: () => {
+      const catSum = {};
+      data.forEach(r => catSum[r.cat] = (catSum[r.cat] || 0) + r.amt);
+      const [cat, val] = Object.entries(catSum).sort((a, b) => b[1] - a[1])[0] || ['-', 0];
+      return `Sua maior categoria de gasto foi **${cat}** com ${br(val)}.`;
+    }
+  },
+  {
+    pergunta: /últimos gastos|recentes|gastei/i,
+    resposta: () => {
+      const ultimos = data.slice(-3).map(r => `${r.desc} (${r.cat}): ${br(r.amt)}`).join('\n');
+      return `Seus 3 últimos gastos:\n${ultimos}`;
+    }
+  },
+  {
+    pergunta: /dica|economizar|transporte/i,
+    resposta: () => {
+      const catSum = {};
+      data.forEach(r => catSum[r.cat] = (catSum[r.cat] || 0) + r.amt);
+      const [cat] = Object.entries(catSum).sort((a, b) => b[1] - a[1])[0] || ['-', 0];
+      return `No total, o seu gasto com transporte foi de ${br(catSum['Transporte'] || 0)}. A cada mês você pegou uma média de 10 corridas de Uber. Considere usar transporte público no lugar de carona de aplicativo.`;
+    }
+  },
+  {
+    pergunta: /previs(ão|ao)/i,
+    resposta: () => makeTotalForecast()
+  },
+  {
+    pergunta: /resumo|insight|geral/i,
+    resposta: () => makeInsight('geral')
+  }
+];
 </script>
+
+<!-- Budget Modal -->
+<div id="budgetModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+  <div class="bg-white p-6 rounded-lg max-w-sm w-full">
+    <h2 class="text-lg font-bold mb-4">Budget para o próximo mês</h2>
+    <label class="block mb-2">Entrada Mensal (R$):
+      <input id="salaryInput" type="number" class="w-full border p-2 rounded" placeholder="Ex: 5000">
+    </label>
+    <div id="budgetResults" class="space-y-1 mt-4"></div>
+    <div class="flex justify-end gap-2 mt-4">
+      <button id="saveBudgetBtn" class="bg-[#34A853] hover:bg-green-700 text-white px-4 py-2 rounded">Calcular</button>
+      <button id="budgetClose" class="bg-gray-200 px-4 py-2 rounded">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Abrir modal
+document.getElementById('budgetBtn')
+  .addEventListener('click', () => {
+    document.getElementById('budgetModal').classList.remove('hidden');
+    document.getElementById('budgetResults').innerHTML = '';
+    document.getElementById('salaryInput').value = '';
+  });
+
+// Fechar modal
+document.getElementById('budgetClose')
+  .addEventListener('click', () => {
+    document.getElementById('budgetModal').classList.add('hidden');
+  });
+
+// Calcular e mostrar o budget
+document.getElementById('saveBudgetBtn')
+  .addEventListener('click', () => {
+    const salary = parseFloat(document.getElementById('salaryInput').value) || 0;
+    const next = getNextMonthObject();
+    const byCat = forecastByCat(data, next.refYm);
+    const cats = ['Moradia', 'Transporte', 'Alimentação', 'Saúde'];
+    let totalPrev = 0;
+    const container = document.getElementById('budgetResults');
+    container.innerHTML = '';
+    cats.forEach(cat => {
+      const pv = byCat[cat] || 0;
+      totalPrev += pv;
+      const p = document.createElement('p');
+      p.textContent = `${cat}: ${br(pv)}`;
+      container.append(p);
+    });
+    const available = salary - totalPrev;
+    const p = document.createElement('p');
+    p.className = available < 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold';
+    p.textContent = `Disponível: ${br(available)}`;
+    container.append(p);
+  });
+</script>
+
 </body>
 </html>
